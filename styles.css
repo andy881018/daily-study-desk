@@ -115,6 +115,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .checkin-button.is-locked { color: #707b87; background: linear-gradient(#e7ebef, #cfd6dc); box-shadow: 0 10px 0 #aeb8c1; }
 
 .subject-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 22px; }
+.subject-grid.three-subjects { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.three-subjects .subject-card { min-height: 270px; padding-left: 10px; padding-right: 10px; }
 .subject-card {
   --subject: var(--red); --soft: #ffe8e6;
   min-height: 286px; padding: 34px 16px 26px; border: 6px solid var(--soft); border-radius: 28px;
@@ -146,6 +148,17 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .level-title { margin: 0; color: var(--subject); font-size: clamp(28px, 6vw, 42px); line-height: 1.25; }
 
+.day-overview {
+  margin: 32px 0 22px; padding: 24px 26px; border: 4px solid var(--header-soft); border-radius: 20px;
+  background: white; box-shadow: 0 8px 0 var(--shadow);
+}
+.day-overview > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.day-overview > div span { color: var(--subject); font-size: 13px; font-weight: 900; letter-spacing: 1px; }
+.day-overview > div strong { color: #697583; font-size: 15px; }
+.day-overview h2 { margin: 16px 0 9px; color: var(--subject); font-size: 27px; }
+.day-overview p { margin: 0; color: #55616f; font-size: 18px; line-height: 1.65; }
+.day-overview small { display: block; margin-top: 10px; color: #8a939e; font-size: 14px; line-height: 1.6; }
+
 .tab-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 36px 0 26px; padding-bottom: 8px; }
 .tab-button {
   position: relative; min-width: 0; min-height: 68px; padding: 8px 12px; border: 4px solid #d8e1ef;
@@ -166,7 +179,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .question-card { padding: 38px 30px 42px; text-align: center; }
 .round-meta { display: flex; justify-content: center; gap: 28px; color: #7f8999; font-size: 19px; font-weight: 800; }
 .prompt { margin: 36px 0 22px; font-size: clamp(23px, 4.8vw, 34px); line-height: 1.55; font-weight: 800; }
-.question-visual { margin: 28px 0; font-size: clamp(52px, 12vw, 82px); line-height: 1.35; }
+.question-visual { margin: 28px 0; font-size: clamp(52px, 12vw, 82px); line-height: 1.35; white-space: pre-line; overflow-wrap: anywhere; }
 .question-visual.syllable { color: var(--subject); font-family: Arial, sans-serif; font-size: clamp(78px, 18vw, 120px); }
 .question-visual.word { color: var(--subject); font-size: clamp(82px, 18vw, 126px); font-weight: 900; }
 .question-visual.english-text { color: var(--subject); font-family: Arial, sans-serif; font-size: clamp(42px, 10vw, 64px); }
@@ -235,6 +248,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .settings-summary div { padding: 16px; border-radius: 14px; background: #f1f6fa; text-align: center; }
 .settings-summary strong { display: block; color: #176bbb; font-size: 25px; }
 .settings-summary span { color: #7a8490; font-size: 13px; }
+.program-setting { display: grid; gap: 6px; margin: 20px 0; padding: 16px; border-radius: 14px; background: #fff6d8; }
+.program-setting strong { color: #8d6b00; }
+.program-setting span { color: #776b45; font-size: 14px; line-height: 1.55; }
 .settings-actions { display: flex; gap: 12px; margin-top: 26px; }
 .settings-save, .settings-reset { flex: 1; min-height: 52px; border: 0; border-radius: 13px; cursor: pointer; font-weight: 800; }
 .settings-save { color: white; background: #287dcc; }
@@ -258,7 +274,9 @@ button { -webkit-tap-highlight-color: transparent; }
   .stat-card { padding: 18px 5px 16px; border-width: 4px; border-radius: 16px; }
   .checkin-button { min-height: 82px; border-radius: 22px; }
   .subject-grid { gap: 20px 12px; }
+  .subject-grid.three-subjects { grid-template-columns: 1fr; }
   .subject-card { min-height: 242px; padding: 26px 10px 22px; border-width: 5px; border-radius: 22px; }
+  .three-subjects .subject-card { min-height: 218px; }
   .subject-icon { width: 82px; height: 82px; margin-bottom: 19px; font-size: 43px; border-width: 6px; border-radius: 20px; }
   .stars { margin: 16px 0 10px; font-size: 24px; }
   .level-header { min-height: 104px; gap: 16px; padding: 18px; }
@@ -271,6 +289,9 @@ button { -webkit-tap-highlight-color: transparent; }
   .answer-button { min-height: 68px; padding: 10px 7px; border-width: 4px; }
   .round-meta { gap: 18px; font-size: 16px; }
   .lesson-card { padding: 24px 20px; }
+  .day-overview { margin-top: 26px; padding: 20px 18px; }
+  .day-overview h2 { font-size: 23px; }
+  .day-overview p { font-size: 16px; }
   .settings-form { padding: 22px 18px; }
   .settings-actions { flex-direction: column; }
 }

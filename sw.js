@@ -1,8 +1,9 @@
-const CACHE_NAME = "daily-study-desk-v1";
+const CACHE_NAME = "daily-study-desk-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./curriculum.js",
   "./app.js",
   "./manifest.webmanifest",
   "./icon-180.png",
