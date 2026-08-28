@@ -12,6 +12,16 @@
     english: { title: "英语金币关", icon: "🪙", color: "#e75a12", soft: "#fff0e5", description: "听说 · 词汇 · 情境表达" }
   };
   const subjectKeys = Object.keys(subjects);
+  const defaultRewards = [
+    { id: "ipad-hour", cost: 150, title: "iPad畅玩1小时", icon: "📱" },
+    { id: "rou-rou-rice", cost: 200, title: "肉肉大米一顿", icon: "🍚" },
+    { id: "pokemon-cards", cost: 200, title: "宝可梦抽卡2包", icon: "🃏" },
+    { id: "lego-basket", cost: 280, title: "乐高随机积木一筐", icon: "🧱" },
+    { id: "pokemon-star", cost: 280, title: "宝可梦明耀之星一次", icon: "✨" },
+    { id: "zuozuo-bbq", cost: 350, title: "作作烤肉一顿", icon: "🥩" },
+    { id: "guoan-match", cost: 560, title: "北京国安主场比赛一场", icon: "⚽" },
+    { id: "switch-2", cost: 2800, title: "Switch 2一台", icon: "🎮" }
+  ];
   const defaultState = {
     coins: 20,
     streak: 0,
@@ -21,6 +31,7 @@
     daily: { date: today(), completed: [] },
     program: { version: curriculum.version, completedDays: 0, records: {} },
     review: [],
+    rewards: { custom: [], counts: {}, history: [] },
     settings: { speechEnabled: true, speechRate: 0.82, speechLocale: "en-US" }
   };
 
@@ -38,7 +49,12 @@
         daily: { ...defaultState.daily, ...(saved.daily || {}) },
         program: { ...defaultState.program, ...(saved.program || {}), records: { ...(saved.program?.records || {}) }, version: curriculum.version },
         settings: { ...defaultState.settings, ...(saved.settings || {}) },
-        review: Array.isArray(saved.review) ? saved.review.slice(0, 100) : []
+        review: Array.isArray(saved.review) ? saved.review.slice(0, 100) : [],
+        rewards: {
+          custom: Array.isArray(saved.rewards?.custom) ? saved.rewards.custom.slice(0, 50) : [],
+          counts: { ...(saved.rewards?.counts || {}) },
+          history: Array.isArray(saved.rewards?.history) ? saved.rewards.history.slice(0, 100) : []
+        }
       };
       merged.program.completedDays = Math.max(0, Math.min(60, Number(merged.program.completedDays) || 0));
       if (merged.activeDate !== today()) {
@@ -63,6 +79,11 @@
   function recordKey(day, subject) { return `${curriculum.version}:${day}:${subject}`; }
   function dailyDone(day, subject) { return state.daily.completed.includes(dailyKey(day, subject)); }
   function completedToday(day) { return subjectKeys.filter((key) => dailyDone(day, key)).length; }
+  function allRewards() { return [...defaultRewards, ...state.rewards.custom.map((reward) => ({ ...reward, custom: true }))]; }
+  function rewardById(id) { return allRewards().find((reward) => reward.id === id); }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+  }
 
   function showToast(message) {
     const toast = $("#toast");
@@ -84,6 +105,7 @@
     $("#streak-days").textContent = `${state.streak}天`;
     $("#coin-count").textContent = state.coins;
     $("#settings-button").addEventListener("click", openSettings);
+    $("#coin-store-button").addEventListener("click", renderRewardCenter);
 
     const resting = isRestingToday();
     const day = resting && state.program.completedDays > 0 ? state.program.completedDays : activeDayNumber();
@@ -164,6 +186,152 @@
     saveState();
     renderHome();
     showToast(state.program.completedDays === 60 ? "60天计划完成，太了不起了！" : `第${day}天打卡成功，奖励10枚金币！`);
+  }
+
+  function renderRewardCenter() {
+    current = null;
+    const rewards = allRewards();
+    app().innerHTML = `
+      <section class="reward-view view-enter">
+        <header class="reward-header">
+          <button class="back-button reward-back" type="button" aria-label="返回主页">← 返回</button>
+          <div><span>COIN TREASURE</span><h1>金币兑换中心</h1></div>
+          <button class="reward-add-button" type="button"><span aria-hidden="true">＋</span> 家长添加</button>
+        </header>
+        <section class="reward-balance" aria-label="当前金币">
+          <span class="reward-balance-icon" aria-hidden="true">🪙</span>
+          <div><small>当前金币</small><strong>${state.coins}</strong></div>
+          <span class="reward-balance-note">认真学习攒下的宝藏</span>
+        </section>
+        <section class="reward-grid" aria-label="奖励宝箱">
+          ${rewards.map((reward) => {
+            const count = Number(state.rewards.counts[reward.id]) || 0;
+            const shortfall = Math.max(0, reward.cost - state.coins);
+            return `
+              <article class="reward-card${shortfall ? " is-locked" : ""}" data-reward-id="${escapeHtml(reward.id)}">
+                <div class="reward-card-top">
+                  <span class="reward-cost"><span aria-hidden="true">🪙</span>${reward.cost}</span>
+                  ${reward.custom ? `<div class="reward-tools"><button class="reward-tool edit-reward" type="button" title="编辑奖励" aria-label="编辑${escapeHtml(reward.title)}">✎</button><button class="reward-tool delete-reward" type="button" title="删除奖励" aria-label="删除${escapeHtml(reward.title)}">×</button></div>` : ""}
+                </div>
+                <div class="reward-icon" aria-hidden="true">${escapeHtml(reward.icon || "🎁")}</div>
+                <h2>${escapeHtml(reward.title)}</h2>
+                <p>已兑换 <strong>${count}</strong> 次</p>
+                <button class="redeem-button" type="button" ${shortfall ? "disabled" : ""}>${shortfall ? `还差 ${shortfall} 金币` : "兑换奖励"}</button>
+              </article>`;
+          }).join("")}
+        </section>
+      </section>`;
+
+    $(".reward-back").addEventListener("click", renderHome);
+    $(".reward-add-button").addEventListener("click", () => openRewardEditor());
+    document.querySelectorAll(".reward-card").forEach((card) => {
+      const id = card.dataset.rewardId;
+      $(".redeem-button", card).addEventListener("click", () => openRedeemConfirmation(id));
+      $(".edit-reward", card)?.addEventListener("click", () => openRewardEditor(id));
+      $(".delete-reward", card)?.addEventListener("click", () => deleteCustomReward(id));
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openRedeemConfirmation(id) {
+    const reward = rewardById(id);
+    if (!reward) return showToast("这个奖励已经不存在");
+    if (state.coins < reward.cost) return showToast(`还差${reward.cost - state.coins}枚金币`);
+
+    $("#redeem-dialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "redeem-dialog";
+    dialog.className = "redeem-dialog";
+    dialog.innerHTML = `
+      <div class="redeem-confirm">
+        <div class="confirm-icon" aria-hidden="true">${escapeHtml(reward.icon || "🎁")}</div>
+        <span class="confirm-kicker">开启奖励宝箱</span>
+        <h2>${escapeHtml(reward.title)}</h2>
+        <p>将使用 <strong>${reward.cost}</strong> 枚金币<br>兑换后还剩 <strong>${state.coins - reward.cost}</strong> 枚</p>
+        <div class="confirm-actions"><button class="confirm-cancel" type="button">再想一想</button><button class="confirm-redeem" type="button">确认兑换</button></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    $(".confirm-cancel", dialog).addEventListener("click", () => dialog.close());
+    $(".confirm-redeem", dialog).addEventListener("click", () => {
+      if (state.coins < reward.cost) {
+        dialog.close();
+        return showToast("金币余额不足");
+      }
+      state.coins -= reward.cost;
+      state.rewards.counts[reward.id] = (Number(state.rewards.counts[reward.id]) || 0) + 1;
+      state.rewards.history.unshift({ id: reward.id, title: reward.title, cost: reward.cost, date: new Date().toISOString() });
+      state.rewards.history = state.rewards.history.slice(0, 100);
+      saveState();
+      dialog.close();
+      renderRewardCelebration(reward);
+    });
+    dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), 0), { once: true });
+    dialog.showModal();
+  }
+
+  function renderRewardCelebration(reward) {
+    const count = Number(state.rewards.counts[reward.id]) || 0;
+    app().innerHTML = `
+      <section class="reward-celebration view-enter">
+        <div class="celebration-rays" aria-hidden="true"><span>★</span><span>✦</span><span>★</span><span>✦</span><span>★</span></div>
+        <span class="celebration-kicker">TREASURE UNLOCKED</span>
+        <div class="celebration-chest" aria-hidden="true">🎁</div>
+        <h1>大奖兑换成功！</h1>
+        <p class="celebration-message">坚持学习攒下的金币<br>真的变成奖励啦！</p>
+        <div class="celebration-prize"><span aria-hidden="true">${escapeHtml(reward.icon || "🎁")}</span><strong>${escapeHtml(reward.title)}</strong></div>
+        <div class="celebration-stats"><div><small>剩余金币</small><strong>🪙 ${state.coins}</strong></div><div><small>累计兑换</small><strong>${count} 次</strong></div></div>
+        <p class="celebration-parent-note">请向家长出示这个画面领取奖励</p>
+        <div class="celebration-actions"><button class="celebration-back" type="button">继续看宝箱</button><button class="celebration-home" type="button">回到学习桌</button></div>
+      </section>`;
+    $(".celebration-back").addEventListener("click", renderRewardCenter);
+    $(".celebration-home").addEventListener("click", renderHome);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openRewardEditor(id = "") {
+    const reward = id ? state.rewards.custom.find((item) => item.id === id) : null;
+    $("#reward-editor-dialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "reward-editor-dialog";
+    dialog.className = "settings-dialog reward-editor-dialog";
+    dialog.innerHTML = `
+      <form class="settings-form reward-editor-form">
+        <div class="settings-head"><h2>${reward ? "编辑奖励" : "添加奖励"}</h2><button class="icon-button close-reward-editor" type="button" title="关闭" aria-label="关闭奖励编辑器">×</button></div>
+        <label class="settings-field"><span>奖励宝箱内容</span><input id="reward-title" type="text" maxlength="40" required placeholder="例如：周末去科技馆" value="${escapeHtml(reward?.title || "")}" /></label>
+        <label class="settings-field"><span>需要金币数量</span><input id="reward-cost" type="number" min="1" max="99999" step="1" required inputmode="numeric" placeholder="例如：300" value="${reward?.cost || ""}" /></label>
+        <p class="reward-editor-tip">新增奖励会使用礼物宝箱图标，并和初始奖励一起保存在这台设备上。</p>
+        <button class="settings-save reward-editor-save" type="submit">${reward ? "保存修改" : "添加到兑换中心"}</button>
+      </form>`;
+    document.body.appendChild(dialog);
+    $(".close-reward-editor", dialog).addEventListener("click", () => dialog.close());
+    $(".reward-editor-form", dialog).addEventListener("submit", (event) => {
+      event.preventDefault();
+      const title = $("#reward-title", dialog).value.trim();
+      const cost = Number($("#reward-cost", dialog).value);
+      if (!title || !Number.isInteger(cost) || cost < 1 || cost > 99999) return showToast("请填写有效的奖励内容和金币数量");
+      if (reward) {
+        reward.title = title;
+        reward.cost = cost;
+      } else {
+        state.rewards.custom.push({ id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, title, cost, icon: "🎁" });
+      }
+      saveState();
+      dialog.close();
+      renderRewardCenter();
+      showToast(reward ? "奖励已经更新" : "新奖励已经加入");
+    });
+    dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), 0), { once: true });
+    dialog.showModal();
+  }
+
+  function deleteCustomReward(id) {
+    const reward = state.rewards.custom.find((item) => item.id === id);
+    if (!reward) return;
+    if (!window.confirm(`确定删除“${reward.title}”吗？已经产生的兑换记录不会被清除。`)) return;
+    state.rewards.custom = state.rewards.custom.filter((item) => item.id !== id);
+    saveState();
+    renderRewardCenter();
+    showToast("自定义奖励已删除");
   }
 
   function openSubject(key) {
