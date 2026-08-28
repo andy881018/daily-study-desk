@@ -1,7 +1,7 @@
 {
-  "name": "每日学习工作台",
-  "short_name": "学习工作台",
-  "description": "适合小学低年级孩子的每日学习、闯关和打卡工具",
+  "name": "安小彪奖励中心",
+  "short_name": "安小彪奖励中心",
+  "description": "安小彪的学习、成长活动、金币与奖励兑换中心",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",

@@ -13,15 +13,27 @@
   };
   const subjectKeys = Object.keys(subjects);
   const defaultRewards = [
-    { id: "ipad-hour", cost: 150, title: "iPad畅玩1小时", icon: "📱" },
-    { id: "rou-rou-rice", cost: 200, title: "肉肉大米一顿", icon: "🍚" },
-    { id: "pokemon-cards", cost: 200, title: "宝可梦抽卡2包", icon: "🃏" },
-    { id: "lego-basket", cost: 280, title: "乐高随机积木一筐", icon: "🧱" },
-    { id: "pokemon-star", cost: 280, title: "宝可梦明耀之星一次", icon: "✨" },
-    { id: "zuozuo-bbq", cost: 350, title: "作作烤肉一顿", icon: "🥩" },
-    { id: "guoan-match", cost: 560, title: "北京国安主场比赛一场", icon: "⚽" },
-    { id: "switch-2", cost: 2800, title: "Switch 2一台", icon: "🎮" }
+    { id: "ipad-hour", cost: 170, title: "iPad畅玩1小时", icon: "📱" },
+    { id: "rou-rou-rice", cost: 230, title: "肉肉大米一顿", icon: "🍚" },
+    { id: "pokemon-cards", cost: 230, title: "宝可梦抽卡2包", icon: "🃏" },
+    { id: "lego-basket", cost: 320, title: "乐高随机积木一筐", icon: "🧱" },
+    { id: "pokemon-star", cost: 320, title: "宝可梦明耀之星一次", icon: "✨" },
+    { id: "zuozuo-bbq", cost: 400, title: "作作烤肉一顿", icon: "🥩" },
+    { id: "guoan-match", cost: 640, title: "北京国安主场比赛一场", icon: "⚽" },
+    { id: "switch-2", cost: 3200, title: "Switch 2一台", icon: "🎮" }
   ];
+  const weeklyActivities = [
+    { id: "swimming", title: "游泳课", icon: "🏊", target: 1, reward: 5, detail: "每周1次" },
+    { id: "street-dance", title: "街舞课", icon: "🕺", target: 1, reward: 5, detail: "每周1次" },
+    { id: "lego-class", title: "乐高课", icon: "🧱", target: 1, reward: 5, detail: "每周1次" },
+    { id: "pinyin-class", title: "拼音课", icon: "🔤", target: 1, reward: 5, detail: "每周1次" },
+    { id: "jump-rope", title: "跳绳100下", icon: "➰", target: 2, reward: 3, detail: "每周2次" }
+  ];
+  const weekStartKey = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    return date.toLocaleDateString("sv-SE");
+  };
   const defaultState = {
     coins: 20,
     streak: 0,
@@ -32,6 +44,7 @@
     program: { version: curriculum.version, completedDays: 0, records: {} },
     review: [],
     rewards: { custom: [], counts: {}, history: [] },
+    weekly: { week: weekStartKey(), counts: {} },
     settings: { speechEnabled: true, speechRate: 0.82, speechLocale: "en-US" }
   };
 
@@ -54,7 +67,8 @@
           custom: Array.isArray(saved.rewards?.custom) ? saved.rewards.custom.slice(0, 50) : [],
           counts: { ...(saved.rewards?.counts || {}) },
           history: Array.isArray(saved.rewards?.history) ? saved.rewards.history.slice(0, 100) : []
-        }
+        },
+        weekly: { ...defaultState.weekly, ...(saved.weekly || {}), counts: { ...(saved.weekly?.counts || {}) } }
       };
       merged.program.completedDays = Math.max(0, Math.min(60, Number(merged.program.completedDays) || 0));
       if (merged.activeDate !== today()) {
@@ -62,6 +76,7 @@
         merged.activeSeconds = 0;
       }
       if (merged.daily.date !== today()) merged.daily = { date: today(), completed: [] };
+      if (merged.weekly.week !== weekStartKey()) merged.weekly = { week: weekStartKey(), counts: {} };
       return merged;
     } catch {
       return structuredClone(defaultState);
@@ -81,6 +96,14 @@
   function completedToday(day) { return subjectKeys.filter((key) => dailyDone(day, key)).length; }
   function allRewards() { return [...defaultRewards, ...state.rewards.custom.map((reward) => ({ ...reward, custom: true }))]; }
   function rewardById(id) { return allRewards().find((reward) => reward.id === id); }
+  function weeklyCount(activity) { return Math.max(0, Math.min(activity.target, Number(state.weekly.counts[activity.id]) || 0)); }
+  function weeklyDoneCount() { return weeklyActivities.reduce((total, activity) => total + weeklyCount(activity), 0); }
+  function ensureWeeklyState() {
+    const currentWeek = weekStartKey();
+    if (state.weekly.week === currentWeek) return;
+    state.weekly = { week: currentWeek, counts: {} };
+    saveState();
+  }
   function escapeHtml(value) {
     return String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   }
@@ -99,6 +122,7 @@
 
   function renderHome() {
     current = null;
+    ensureWeeklyState();
     const template = $("#home-template").content.cloneNode(true);
     app().replaceChildren(template);
     $("#today-minutes").textContent = `${Math.floor(state.activeSeconds / 60)}分钟`;
@@ -106,6 +130,7 @@
     $("#coin-count").textContent = state.coins;
     $("#settings-button").addEventListener("click", openSettings);
     $("#coin-store-button").addEventListener("click", renderRewardCenter);
+    $("#weekly-shortcut").addEventListener("click", () => $("#weekly-activities").scrollIntoView({ behavior: "smooth", block: "start" }));
 
     const resting = isRestingToday();
     const day = resting && state.program.completedDays > 0 ? state.program.completedDays : activeDayNumber();
@@ -152,6 +177,7 @@
       });
       grid.appendChild(card);
     });
+    renderWeeklyActivities();
 
     const checkin = $("#checkin-button");
     if (finished) {
@@ -186,6 +212,77 @@
     saveState();
     renderHome();
     showToast(state.program.completedDays === 60 ? "60天计划完成，太了不起了！" : `第${day}天打卡成功，奖励10枚金币！`);
+  }
+
+  function renderWeeklyActivities() {
+    const weeklySection = $("#weekly-activities");
+    if (!weeklySection) return;
+    const done = weeklyDoneCount();
+    const total = weeklyActivities.reduce((sum, activity) => sum + activity.target, 0);
+    $("#weekly-shortcut-count").textContent = `${done} / ${total}`;
+    weeklySection.innerHTML = `
+      <div class="weekly-head">
+        <div><span class="section-kicker">THIS WEEK</span><h2>本周成长活动</h2></div>
+        <strong>${done} / ${total}</strong>
+      </div>
+      <div class="weekly-progress" aria-hidden="true"><span style="width:${(done / total) * 100}%"></span></div>
+      <p class="weekly-note">课外活动不影响每日打卡，每周一重新开始。</p>
+      <div class="weekly-grid">
+        ${weeklyActivities.map((activity) => {
+          const count = weeklyCount(activity);
+          const complete = count >= activity.target;
+          return `
+            <article class="weekly-card${complete ? " is-complete" : ""}" data-activity-id="${activity.id}">
+              <span class="weekly-icon" aria-hidden="true">${activity.icon}</span>
+              <div class="weekly-copy"><h3>${activity.title}</h3><p>${activity.detail} · 每次 +${activity.reward}金币</p></div>
+              <span class="weekly-count">${count}/${activity.target}</span>
+              <button class="weekly-complete" type="button" ${complete ? "disabled" : ""}>${complete ? "本周已完成" : "完成一次"}</button>
+            </article>`;
+        }).join("")}
+      </div>`;
+    document.querySelectorAll(".weekly-card").forEach((card) => {
+      $(".weekly-complete", card).addEventListener("click", () => openWeeklyConfirmation(card.dataset.activityId));
+    });
+  }
+
+  function openWeeklyConfirmation(id) {
+    ensureWeeklyState();
+    const activity = weeklyActivities.find((item) => item.id === id);
+    if (!activity) return;
+    const count = weeklyCount(activity);
+    if (count >= activity.target) return showToast("这项活动本周已经完成啦");
+
+    $("#weekly-dialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "weekly-dialog";
+    dialog.className = "redeem-dialog weekly-dialog";
+    dialog.innerHTML = `
+      <div class="redeem-confirm weekly-confirm">
+        <div class="confirm-icon" aria-hidden="true">${activity.icon}</div>
+        <span class="confirm-kicker">家长确认</span>
+        <h2>${activity.title}</h2>
+        <p>${activity.id === "jump-rope" ? "已经完成100下跳绳" : "已经完成本周课程"}<br>确认后奖励 <strong>${activity.reward}</strong> 枚金币</p>
+        <div class="confirm-actions"><button class="confirm-cancel" type="button">暂不确认</button><button class="confirm-weekly" type="button">确认完成</button></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    $(".confirm-cancel", dialog).addEventListener("click", () => dialog.close());
+    $(".confirm-weekly", dialog).addEventListener("click", (event) => {
+      event.currentTarget.disabled = true;
+      ensureWeeklyState();
+      const latestCount = weeklyCount(activity);
+      if (latestCount >= activity.target) {
+        dialog.close();
+        return showToast("这项活动本周已经完成啦");
+      }
+      state.weekly.counts[activity.id] = latestCount + 1;
+      state.coins += activity.reward;
+      saveState();
+      dialog.close();
+      renderHome();
+      showToast(`${activity.title}完成，奖励${activity.reward}枚金币！`);
+    });
+    dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), 0), { once: true });
+    dialog.showModal();
   }
 
   function renderRewardCenter() {
@@ -252,7 +349,8 @@
       </div>`;
     document.body.appendChild(dialog);
     $(".confirm-cancel", dialog).addEventListener("click", () => dialog.close());
-    $(".confirm-redeem", dialog).addEventListener("click", () => {
+    $(".confirm-redeem", dialog).addEventListener("click", (event) => {
+      event.currentTarget.disabled = true;
       if (state.coins < reward.cost) {
         dialog.close();
         return showToast("金币余额不足");

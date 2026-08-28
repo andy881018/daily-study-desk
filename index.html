@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#dff3ff" />
-    <meta name="description" content="面向幼儿园大班和小学一年级衔接的60天三科学习打卡工具" />
+    <meta name="description" content="安小彪的学习、成长活动、金币与奖励兑换中心" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="学习工作台" />
-    <title>每日学习工作台</title>
+    <meta name="apple-mobile-web-app-title" content="安小彪奖励中心" />
+    <title>安小彪奖励中心</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="apple-touch-icon" href="icon-180.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
@@ -24,7 +24,7 @@
         <header class="hero panel-depth">
           <div class="hero-copy">
             <p class="eyebrow">MY STUDY DESK</p>
-            <h1><span id="learner-name">天天</span>每日学习工作台</h1>
+            <h1>安小彪奖励中心</h1>
             <p>吃下知识蘑菇，一天长大一点！</p>
           </div>
           <div class="hero-coin" aria-hidden="true"><span>🪙</span></div>
@@ -44,6 +44,12 @@
           </button>
         </section>
 
+        <button id="weekly-shortcut" class="weekly-shortcut" type="button" aria-label="查看本周成长活动">
+          <span class="weekly-shortcut-icon" aria-hidden="true">🏅</span>
+          <span class="weekly-shortcut-copy"><small>本周成长活动</small><strong id="weekly-shortcut-count">0 / 6</strong></span>
+          <span class="weekly-shortcut-action">查看 →</span>
+        </button>
+
         <section class="daily-plan panel-depth" aria-labelledby="daily-plan-title">
           <div class="daily-plan-head">
             <div><span class="section-kicker">TODAY</span><h2 id="daily-plan-title">今日学习任务</h2></div>
@@ -59,6 +65,8 @@
         </button>
 
         <section id="subject-grid" class="subject-grid" aria-label="学习关卡"></section>
+
+        <section id="weekly-activities" class="weekly-activities" aria-label="本周成长活动"></section>
       </section>
     </template>
 

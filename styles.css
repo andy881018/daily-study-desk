@@ -93,6 +93,19 @@ button { -webkit-tap-highlight-color: transparent; }
 .coin-card:hover { background: #fff1b8; }
 .coin-card:active { transform: translateY(5px); box-shadow: 0 6px 0 #e6ae14; }
 
+.weekly-shortcut {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 15px; width: 100%; min-height: 76px;
+  margin: 0 0 28px; padding: 13px 18px; border: 4px solid #b9dcc4; border-radius: 18px; color: #234b30;
+  text-align: left; background: #effaf2; box-shadow: 0 7px 0 #9ccbaa; cursor: pointer;
+}
+.weekly-shortcut-icon { font-size: 34px; }
+.weekly-shortcut-copy { display: grid; min-width: 0; }
+.weekly-shortcut-copy small { color: #587663; font-size: 13px; font-weight: 800; }
+.weekly-shortcut-copy strong { margin-top: 2px; color: #21723a; font-size: 21px; }
+.weekly-shortcut-action { color: #21723a; font-size: 15px; font-weight: 900; }
+.weekly-shortcut:hover { background: #e1f5e6; }
+.weekly-shortcut:active { transform: translateY(4px); box-shadow: 0 3px 0 #9ccbaa; }
+
 .daily-plan {
   margin: 0 0 28px; padding: 22px 24px 20px; border-radius: 22px; background: white;
 }
@@ -139,6 +152,30 @@ button { -webkit-tap-highlight-color: transparent; }
 .stars .earned { color: #ffc91f; text-shadow: 0 2px 0 #d49600; }
 .subject-card p { margin: 0; color: #969da7; font-size: clamp(13px, 2.8vw, 18px); line-height: 1.5; }
 .subject-progress { display: block; margin-top: 8px; color: var(--subject); font-size: 13px; font-weight: 800; }
+
+.weekly-activities { margin-top: 52px; padding-top: 30px; border-top: 5px solid #c8deef; }
+.weekly-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.weekly-head h2 { margin: 3px 0 0; font-size: 27px; }
+.weekly-head strong { color: #238040; font-size: 27px; }
+.weekly-progress { height: 13px; margin: 17px 0 10px; overflow: hidden; border-radius: 7px; background: #e1e8ee; }
+.weekly-progress span { display: block; height: 100%; border-radius: inherit; background: #39a858; transition: width .3s ease; }
+.weekly-note { margin: 0 0 20px; color: #74808b; font-size: 14px; }
+.weekly-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.weekly-card {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; min-width: 0; padding: 17px;
+  border: 4px solid #d5e4ef; border-radius: 19px; background: white; box-shadow: 0 7px 0 #c7d7e3;
+}
+.weekly-card.is-complete { border-color: #a9deb6; background: #effaf1; box-shadow: 0 7px 0 #85c895; }
+.weekly-icon { display: grid; place-items: center; width: 48px; height: 48px; font-size: 31px; }
+.weekly-copy { min-width: 0; }
+.weekly-copy h3 { margin: 0; font-size: 18px; line-height: 1.35; }
+.weekly-copy p { margin: 4px 0 0; color: #7c8792; font-size: 12px; line-height: 1.4; }
+.weekly-count { color: #25713b; font-size: 16px; font-weight: 900; }
+.weekly-complete {
+  grid-column: 1 / -1; min-height: 43px; border: 0; border-radius: 12px; color: white;
+  background: #3288cf; box-shadow: 0 5px 0 #1c6099; cursor: pointer; font-size: 14px; font-weight: 900;
+}
+.weekly-complete:disabled { color: #337343; background: #cfead5; box-shadow: 0 5px 0 #a3d0ae; cursor: default; }
 
 .level-view { padding-bottom: 45px; }
 .level-header {
@@ -298,7 +335,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 25px; }
 .confirm-actions button { min-height: 54px; border: 0; border-radius: 14px; cursor: pointer; font-weight: 900; }
 .confirm-cancel { color: #586572; background: #edf1f5; }
-.confirm-redeem { color: white; background: #e74435; box-shadow: 0 5px 0 #aa2e25; }
+.confirm-redeem, .confirm-weekly { color: white; background: #e74435; box-shadow: 0 5px 0 #aa2e25; }
+.confirm-redeem:disabled, .confirm-weekly:disabled { opacity: .65; }
 
 .reward-celebration {
   position: relative; min-height: calc(100vh - 80px); overflow: hidden; padding: 58px 28px 44px;
@@ -376,6 +414,8 @@ button { -webkit-tap-highlight-color: transparent; }
   .hero-shelf { left: 18px; right: 18px; }
   .stats { gap: 8px; margin-top: 30px; }
   .stat-card { padding: 18px 5px 16px; border-width: 4px; border-radius: 16px; }
+  .weekly-shortcut { min-height: 70px; padding: 11px 14px; }
+  .weekly-shortcut-icon { font-size: 30px; }
   .checkin-button { min-height: 82px; border-radius: 22px; }
   .subject-grid { gap: 20px 12px; }
   .subject-grid.three-subjects { grid-template-columns: 1fr; }
@@ -398,6 +438,9 @@ button { -webkit-tap-highlight-color: transparent; }
   .day-overview p { font-size: 16px; }
   .settings-form { padding: 22px 18px; }
   .settings-actions { flex-direction: column; }
+  .weekly-activities { margin-top: 42px; padding-top: 25px; }
+  .weekly-grid { grid-template-columns: 1fr; }
+  .weekly-card { padding: 15px; }
   .reward-header { grid-template-columns: auto 1fr; gap: 12px; padding: 16px; }
   .reward-header .back-button { min-width: 86px; min-height: 56px; }
   .reward-add-button { grid-column: 1 / -1; width: 100%; }
