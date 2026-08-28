@@ -369,8 +369,18 @@
 
   function renderRewardCelebration(reward) {
     const count = Number(state.rewards.counts[reward.id]) || 0;
+    const confettiColors = ["#e74435", "#f2bf27", "#3188d5", "#37a85a", "#8b62d3", "#ed762d"];
+    const confetti = Array.from({ length: 30 }, (_, index) => {
+      const x = (index * 37 + 9) % 100;
+      const delay = ((index % 10) * 0.07).toFixed(2);
+      const duration = (2.5 + (index % 6) * 0.24).toFixed(2);
+      const drift = (index % 2 === 0 ? 1 : -1) * (18 + (index % 5) * 8);
+      const turn = 420 + (index % 7) * 110;
+      return `<i style="--x:${x}%;--delay:${delay}s;--duration:${duration}s;--drift:${drift}px;--turn:${turn}deg;--color:${confettiColors[index % confettiColors.length]}"></i>`;
+    }).join("");
     app().innerHTML = `
       <section class="reward-celebration view-enter">
+        <div class="celebration-confetti" aria-hidden="true">${confetti}</div>
         <div class="celebration-rays" aria-hidden="true"><span>★</span><span>✦</span><span>★</span><span>✦</span><span>★</span></div>
         <span class="celebration-kicker">TREASURE UNLOCKED</span>
         <div class="celebration-chest" aria-hidden="true">🎁</div>

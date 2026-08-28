@@ -343,6 +343,14 @@ button { -webkit-tap-highlight-color: transparent; }
   border: 6px solid #f2c839; border-radius: 28px; color: #423100; text-align: center;
   background: #fff6c8; box-shadow: 0 12px 0 #d8a90c;
 }
+.reward-celebration > :not(.celebration-confetti) { position: relative; z-index: 1; }
+.celebration-confetti { position: absolute; inset: 0; z-index: 0; display: none; overflow: hidden; pointer-events: none; }
+.celebration-confetti i {
+  position: absolute; top: -28px; left: var(--x); width: 9px; height: 16px; border-radius: 2px;
+  background: var(--color); opacity: .92; transform-origin: center;
+}
+.celebration-confetti i:nth-child(3n) { width: 11px; height: 11px; border-radius: 50%; }
+.celebration-confetti i:nth-child(4n) { width: 17px; height: 7px; }
 .celebration-rays { display: flex; justify-content: space-around; min-height: 44px; color: #ee9f00; font-size: 31px; }
 .celebration-kicker { display: block; margin-top: 8px; color: #a97600; font-size: 12px; font-weight: 900; }
 .celebration-chest { margin: 14px 0 6px; font-size: 105px; line-height: 1; filter: drop-shadow(0 9px 0 rgba(135,91,0,.2)); }
@@ -470,10 +478,17 @@ button { -webkit-tap-highlight-color: transparent; }
   .answer-button.correct { animation: correct-pop .32s ease; }
   .completion-icon { animation: trophy-pop .55s cubic-bezier(.2,.8,.2,1.2); }
   .celebration-chest { animation: chest-pop .72s cubic-bezier(.2,.8,.2,1.2); }
+  .celebration-confetti { display: block; }
+  .celebration-confetti i { animation: confetti-fall var(--duration) ease-in var(--delay) both; }
   .celebration-rays span { animation: sparkle 1.2s ease-in-out infinite alternate; }
   .celebration-rays span:nth-child(even) { animation-delay: .28s; }
   @keyframes correct-pop { 50% { transform: scale(1.04); } }
   @keyframes trophy-pop { from { opacity: 0; transform: scale(.5) rotate(-12deg); } }
   @keyframes chest-pop { from { opacity: 0; transform: scale(.45) rotate(-10deg); } 70% { transform: scale(1.12) rotate(3deg); } }
+  @keyframes confetti-fall {
+    0% { opacity: 0; transform: translate3d(0, -24px, 0) rotate(0deg); }
+    10% { opacity: .95; }
+    100% { opacity: .9; transform: translate3d(var(--drift), calc(100vh + 70px), 0) rotate(var(--turn)); }
+  }
   @keyframes sparkle { from { opacity: .35; transform: translateY(5px) scale(.8); } to { opacity: 1; transform: translateY(-5px) scale(1.15); } }
 }
