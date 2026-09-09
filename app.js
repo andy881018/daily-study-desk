@@ -23,6 +23,7 @@
     { id: "switch-2", cost: 3200, title: "Switch 2一台", icon: "🎮" }
   ];
   const weeklyActivities = [
+    { id: "homework", title: "作业完成", icon: "✍️", target: 7, reward: 2, detail: "每周7次", confirmText: "已经完成当天作业" },
     { id: "swimming", title: "游泳课", icon: "🏊", target: 1, reward: 5, detail: "每周1次" },
     { id: "street-dance", title: "街舞课", icon: "🕺", target: 1, reward: 5, detail: "每周1次" },
     { id: "lego-class", title: "乐高课", icon: "🧱", target: 1, reward: 5, detail: "每周1次" },
@@ -261,7 +262,7 @@
         <div class="confirm-icon" aria-hidden="true">${activity.icon}</div>
         <span class="confirm-kicker">家长确认</span>
         <h2>${activity.title}</h2>
-        <p>${activity.id === "jump-rope" ? "已经完成100下跳绳" : "已经完成本周课程"}<br>确认后奖励 <strong>${activity.reward}</strong> 枚金币</p>
+        <p>${activity.confirmText || (activity.id === "jump-rope" ? "已经完成100下跳绳" : "已经完成本周课程")}<br>确认后奖励 <strong>${activity.reward}</strong> 枚金币</p>
         <div class="confirm-actions"><button class="confirm-cancel" type="button">暂不确认</button><button class="confirm-weekly" type="button">确认完成</button></div>
       </div>`;
     document.body.appendChild(dialog);
