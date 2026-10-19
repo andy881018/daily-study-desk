@@ -41,12 +41,12 @@
     lastCheckin: "",
     activeSeconds: 0,
     activeDate: today(),
-    daily: { date: today(), completed: [] },
-    program: { version: curriculum.version, completedDays: 0, records: {} },
+    daily: { date: today(), completed: [], rewardedStars: {} },
+    program: { version: curriculum.version, completedDays: 0, records: {}, history: [], curriculumStartDay: 1 },
     review: [],
     rewards: { custom: [], counts: {}, history: [] },
     weekly: { week: weekStartKey(), counts: {} },
-    settings: { speechEnabled: true, speechRate: 0.82, speechLocale: "en-US" }
+    settings: { speechEnabled: true, speechRate: 0.82, speechLocale: "en-US", recognitionEnabled: false }
   };
 
   let state = loadState();
@@ -61,22 +61,46 @@
         ...defaultState,
         ...saved,
         daily: { ...defaultState.daily, ...(saved.daily || {}) },
-        program: { ...defaultState.program, ...(saved.program || {}), records: { ...(saved.program?.records || {}) }, version: curriculum.version },
+        program: { ...defaultState.program, ...(saved.program || {}), records: { ...(saved.program?.records || {}) }, history: Array.isArray(saved.program?.history) ? saved.program.history : [] },
         settings: { ...defaultState.settings, ...(saved.settings || {}) },
         review: Array.isArray(saved.review) ? saved.review.slice(0, 100) : [],
+        // 奖励属于家庭的持久数据，独立于课程版本；完整保留自定义项目和历史。
         rewards: {
-          custom: Array.isArray(saved.rewards?.custom) ? saved.rewards.custom.slice(0, 50) : [],
+          custom: Array.isArray(saved.rewards?.custom) ? saved.rewards.custom.slice() : [],
           counts: { ...(saved.rewards?.counts || {}) },
-          history: Array.isArray(saved.rewards?.history) ? saved.rewards.history.slice(0, 100) : []
+          history: Array.isArray(saved.rewards?.history) ? saved.rewards.history.slice() : []
         },
         weekly: { ...defaultState.weekly, ...(saved.weekly || {}), counts: { ...(saved.weekly?.counts || {}) } }
       };
       merged.program.completedDays = Math.max(0, Math.min(60, Number(merged.program.completedDays) || 0));
+      if (merged.program.version !== curriculum.version) {
+        const priorVersion = merged.program.version;
+        merged.program.history.push({ version: priorVersion, completedDays: merged.program.completedDays, records: { ...merged.program.records } });
+        if (merged.program.completedDays === 60) {
+          merged.program.completedDays = 0;
+          merged.program.records = {};
+          merged.daily.completed = [];
+        }
+        merged.program.curriculumStartDay = merged.program.completedDays + 1;
+        // 保留历史成绩，避免更新题库后同一天重复领取星级金币。
+        Object.entries(merged.program.records).forEach(([key, record]) => {
+          if (key.startsWith(priorVersion + ":")) merged.program.records[key.replace(priorVersion + ":", curriculum.version + ":")] = { ...record };
+        });
+        merged.program.version = curriculum.version;
+      }
       if (merged.activeDate !== today()) {
         merged.activeDate = today();
         merged.activeSeconds = 0;
       }
-      if (merged.daily.date !== today()) merged.daily = { date: today(), completed: [] };
+      if (merged.daily.date !== today()) merged.daily = { date: today(), completed: [], rewardedStars: {} };
+      merged.daily.rewardedStars = { ...(merged.daily.rewardedStars || {}) };
+      const recordsForToday = [merged.program.records, ...merged.program.history.map((entry) => entry.records || {})];
+      recordsForToday.flatMap((records) => Object.entries(records)).forEach(([key, record]) => {
+        const subject = key.split(":").pop();
+        if (record.date === today() && subjectKeys.includes(subject)) {
+          merged.daily.rewardedStars[subject] = Math.max(merged.daily.rewardedStars[subject] || 0, record.stars || 0);
+        }
+      });
       if (merged.weekly.week !== weekStartKey()) merged.weekly = { week: weekStartKey(), counts: {} };
       return merged;
     } catch {
@@ -93,6 +117,7 @@
   function isRestingToday() { return state.lastCheckin === today(); }
   function dailyKey(day, subject) { return `day-${day}:${subject}`; }
   function recordKey(day, subject) { return `${curriculum.version}:${day}:${subject}`; }
+  function dayLesson(day) { return curriculum.days[Math.max(0, Math.min(59, day - (state.program.curriculumStartDay || 1)))]; }
   function dailyDone(day, subject) { return state.daily.completed.includes(dailyKey(day, subject)); }
   function completedToday(day) { return subjectKeys.filter((key) => dailyDone(day, key)).length; }
   function allRewards() { return [...defaultRewards, ...state.rewards.custom.map((reward) => ({ ...reward, custom: true }))]; }
@@ -122,6 +147,7 @@
   }
 
   function renderHome() {
+    window.STUDY_SPEAKING?.dispose();
     current = null;
     ensureWeeklyState();
     const template = $("#home-template").content.cloneNode(true);
@@ -134,18 +160,19 @@
     $("#weekly-shortcut").addEventListener("click", () => $("#weekly-activities").scrollIntoView({ behavior: "smooth", block: "start" }));
 
     const resting = isRestingToday();
-    const day = resting && state.program.completedDays > 0 ? state.program.completedDays : activeDayNumber();
-    const dayData = curriculum.days[day - 1];
+    const day = resting ? Math.max(1, state.program.completedDays) : activeDayNumber();
+    const dayData = dayLesson(day);
     const done = resting ? 3 : completedToday(day);
     const finished = isFinished();
 
-    $("#daily-plan-title").textContent = finished ? "60天衔接计划完成" : `第 ${day} 天 · ${dayData.stage}`;
+    const courseLabel = "强化";
+    $("#daily-plan-title").textContent = finished ? `${courseLabel}60天已完成` : `${courseLabel}第 ${day} 天 · ${dayData.stage}`;
     $("#daily-plan-count").textContent = `${done} / 3`;
     $("#daily-plan-bar").style.width = `${(done / 3) * 100}%`;
     $("#daily-plan-message").textContent = finished
       ? "完整走过语文、数学、英语60天进阶路线"
       : resting
-        ? `第 ${day} 天已完成，明天进入第 ${Math.min(60, day + 1)} 天`
+        ? `今天已打卡，明天进入${courseLabel}第 ${activeDayNumber()} 天`
         : `总进度 ${state.program.completedDays} / 60 天，今天三科全部完成后打卡`;
 
     const continueButton = $("#continue-button");
@@ -170,7 +197,7 @@
       card.className = "subject-card";
       card.style.setProperty("--subject", subject.color);
       card.style.setProperty("--soft", subject.soft);
-      card.innerHTML = `<span class="subject-icon" aria-hidden="true">${subject.icon}</span><h2>${subject.title}</h2><div class="stars" aria-label="获得 ${stars} 颗星">${renderStars(stars)}</div><p>${lesson.title}</p><span class="subject-progress">${dailyDone(day, key) || resting ? "今日已完成" : "今日待完成 · 5题"}</span>`;
+      card.innerHTML = `<span class="subject-icon" aria-hidden="true">${subject.icon}</span><h2>${subject.title}</h2><div class="stars" aria-label="获得 ${stars} 颗星">${renderStars(stars)}</div><p>${lesson.title}</p><span class="subject-progress">${dailyDone(day, key) || resting ? "今日已完成" : `今日待完成 · ${lesson.questions.length}题`}</span>`;
       card.addEventListener("click", () => {
         if (finished) return showToast("60天计划已经完成，可以继续复习任意内容");
         if (resting) return showToast("今天已经完成，明天继续下一天");
@@ -287,6 +314,7 @@
   }
 
   function renderRewardCenter() {
+    window.STUDY_SPEAKING?.dispose();
     current = null;
     const rewards = allRewards();
     app().innerHTML = `
@@ -359,7 +387,6 @@
       state.coins -= reward.cost;
       state.rewards.counts[reward.id] = (Number(state.rewards.counts[reward.id]) || 0) + 1;
       state.rewards.history.unshift({ id: reward.id, title: reward.title, cost: reward.cost, date: new Date().toISOString() });
-      state.rewards.history = state.rewards.history.slice(0, 100);
       saveState();
       dialog.close();
       renderRewardCelebration(reward);
@@ -445,7 +472,7 @@
 
   function openSubject(key) {
     const day = activeDayNumber();
-    const dayData = curriculum.days[day - 1];
+    const dayData = dayLesson(day);
     current = { subject: key, day, stage: dayData.stage, lesson: dayData[key], question: 0, score: 0, attempts: 0, locked: false, mistakes: 0 };
     renderSubject();
   }
@@ -464,7 +491,7 @@
           <p>${current.lesson.goal}</p>
           ${current.lesson.note ? `<small>${current.lesson.note}</small>` : ""}
         </section>
-        <div class="instruction">完成5题，其中包含昨日和五日前的回声复习。</div>
+        <div class="instruction">${current.subject === "chinese" ? "完成10题：7道拼音 + 3道词语与阅读理解。先自己拼一拼，再选答案。" : current.subject === "math" ? "完成5题：20以内加减法、数的分合与基础概念。可以用小棒帮忙。" : "完成5题：听一听、认一认熟悉的单词。答题后可以自愿录音跟读。"}</div>
         <section id="level-content"></section>
       </section>`;
     $(".back-button").addEventListener("click", renderHome);
@@ -473,6 +500,7 @@
   }
 
   function renderQuestion() {
+    window.STUDY_SPEAKING?.dispose();
     const questions = current.lesson.questions;
     if (current.question >= questions.length) return renderCompletion();
     const question = questions[current.question];
@@ -483,11 +511,12 @@
       <article class="question-card" style="--subject:${subject.color}">
         <div class="round-meta"><span>⭐ 第 ${current.question + 1} / ${questions.length} 题</span><span>✅ <b class="score-count">${current.score}</b></span></div>
         <p class="prompt">${question.prompt}</p>
-        <div class="question-visual ${englishText}">${question.visual}</div>
+        <div class="question-visual ${question.visualClass || englishText}">${question.visual}</div>
         ${question.example ? `<p class="example">${question.example}</p>` : ""}
         ${audioControls}
         <div class="answers"></div>
         <p class="feedback" aria-live="assertive"></p>
+        <div id="speaking-practice" hidden></div>
         <button class="next-button" type="button">下一题 →</button>
       </article>`;
     const answers = $(".answers");
@@ -502,6 +531,16 @@
     $(".play-audio")?.addEventListener("click", () => speakEnglish(question.speech));
     $(".play-audio-slow")?.addEventListener("click", () => speakEnglish(question.speech, true));
     $(".next-button").addEventListener("click", nextQuestion);
+  }
+
+  function offerSpeaking(question) {
+    if (current.subject !== "english" || !question.speech || !window.STUDY_SPEAKING) return;
+    window.STUDY_SPEAKING.mount($("#speaking-practice"), {
+      text: question.speech,
+      locale: state.settings.speechLocale,
+      recognitionEnabled: state.settings.recognitionEnabled,
+      speak: () => speakEnglish(question.speech)
+    });
   }
 
   function rememberMistake(question, answer) {
@@ -522,6 +561,7 @@
       $(".feedback").textContent = current.attempts === 0 ? "一次答对！继续保持。" : "这次答对了，已经记住啦！";
       $(".feedback").className = "feedback good";
       if (question.speech) speakEnglish(question.speech);
+      offerSpeaking(question);
       $(".next-button").classList.add("show");
       return;
     }
@@ -532,7 +572,7 @@
     current.mistakes += 1;
     rememberMistake(question, buttons[correct].textContent);
     $(".feedback").className = "feedback bad";
-    if (current.attempts === 1) {
+    if (current.attempts === 1 && buttons.some((button, index) => index !== selected && index !== correct && !button.disabled)) {
       $(".feedback").textContent = "再想一想，还可以试一次。";
       return;
     }
@@ -540,6 +580,7 @@
     buttons[correct].classList.add("correct");
     $(".feedback").textContent = `正确答案是“${buttons[correct].textContent}”，跟着再读一遍。`;
     if (question.speech) speakEnglish(question.speech, true);
+    offerSpeaking(question);
     $(".next-button").classList.add("show");
   }
 
@@ -554,10 +595,11 @@
     const total = current.lesson.questions.length;
     const stars = current.score === total ? 3 : current.score >= Math.ceil(total * 0.6) ? 2 : 1;
     const key = recordKey(current.day, current.subject);
-    const oldStars = state.program.records[key]?.stars || 0;
+    const oldStars = Math.max(state.program.records[key]?.stars || 0, state.daily.rewardedStars?.[current.subject] || 0);
     const reward = Math.max(0, stars - oldStars) * 2;
     state.program.records[key] = { stars: Math.max(oldStars, stars), score: current.score, total, mistakes: current.mistakes, date: today(), title: current.lesson.title };
     state.coins += reward;
+    state.daily.rewardedStars = { ...(state.daily.rewardedStars || {}), [current.subject]: Math.max(oldStars, stars) };
     const dKey = dailyKey(current.day, current.subject);
     if (!state.daily.completed.includes(dKey)) state.daily.completed.push(dKey);
     saveState();
@@ -578,6 +620,7 @@
   }
 
   function speakEnglish(text, slow = false) {
+    if (window.STUDY_SPEAKING?.isBusy()) return showToast("请先结束录音，再听示范");
     if (!state.settings.speechEnabled) return showToast("家长设置中已关闭英语发音");
     if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return showToast("当前浏览器不支持语音朗读");
     const utterance = new SpeechSynthesisUtterance(text);
@@ -598,22 +641,26 @@
     dialog.innerHTML = `
       <form class="settings-form" method="dialog">
         <div class="settings-head"><h2>家长设置</h2><button class="icon-button close-settings" type="button" title="关闭" aria-label="关闭家长设置">×</button></div>
-        <div class="settings-summary"><div><strong>${state.program.completedDays}</strong><span>完成天数 / 60</span></div><div><strong>${state.review.length}</strong><span>待复习错题</span></div></div>
-        <div class="program-setting"><strong>海淀衔接加强版</strong><span>每天语文、数学、英语各5题，完成三科后打卡。</span></div>
+        <div class="settings-summary"><div><strong>${state.program.completedDays}</strong><span>本轮完成天数 / 60</span></div><div><strong>${state.review.length}</strong><span>待复习错题</span></div></div>
+        <div class="program-setting"><strong>${curriculum.title}</strong><span>每天语文10题、数学5题、英语5题，完成三科后打卡。${state.program.history.length ? "以前的学习记录已保留。" : ""}</span></div>
         <label class="toggle-row"><span>英语朗读</span><input id="speech-enabled" type="checkbox" /></label>
         <label class="settings-field"><span>英语口音</span><select id="speech-locale"><option value="en-US">美式英语</option><option value="en-GB">英式英语</option></select><small>具体声音由当前设备提供。</small></label>
         <label class="settings-field"><span>正常朗读速度</span><input id="speech-rate" type="range" min="0.7" max="1" step="0.05" /><small>乌龟按钮使用更慢的速度。</small></label>
+        <label class="toggle-row"><span>跟读单词识别（可选）</span><input id="recognition-enabled" type="checkbox" /></label>
+        <p class="practice-note">开启后仍需手动点“单词识别”。录音可能由浏览器或设备的语音服务联网处理；结果仅表示单词匹配，不代表专业发音分数。设备不支持时，可以录音回放。单纯录音回放留在当前页面，离开题目即释放。</p>
         <div class="settings-actions"><button class="settings-save" type="submit">保存设置</button><button class="settings-reset" type="button">清除学习记录</button></div>
       </form>`;
     document.body.appendChild(dialog);
     $("#speech-enabled", dialog).checked = state.settings.speechEnabled;
     $("#speech-locale", dialog).value = state.settings.speechLocale;
     $("#speech-rate", dialog).value = String(state.settings.speechRate);
+    $("#recognition-enabled", dialog).checked = state.settings.recognitionEnabled;
     $(".close-settings", dialog).addEventListener("click", () => dialog.close());
     $(".settings-form", dialog).addEventListener("submit", () => {
       state.settings.speechEnabled = $("#speech-enabled", dialog).checked;
       state.settings.speechLocale = $("#speech-locale", dialog).value;
       state.settings.speechRate = Number($("#speech-rate", dialog).value);
+      state.settings.recognitionEnabled = $("#recognition-enabled", dialog).checked;
       saveState();
       setTimeout(() => { dialog.remove(); renderHome(); showToast("家长设置已保存"); }, 0);
     });
@@ -638,6 +685,7 @@
     }
   }, 10000);
 
+  saveState();
   renderHome();
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));

@@ -67,7 +67,7 @@
     ], "认一认即可，不要求孩子反复抄写。 ");
   };
 
-  const toneNames = ["第一声（ˉ）", "第二声（ˊ）", "第三声（ˇ）", "第四声（ˋ）"];
+  const toneNames = ["第一声（ā）", "第二声（á）", "第三声（ǎ）", "第四声（à）"];
   const pinyinUnits = [
     ["第二单元·a o e", "é", "鹅", 2], ["第二单元·i u ü", "yú", "鱼", 2],
     ["第二单元·b p m f", "bā", "八", 1], ["第二单元·d t n l", "dà", "大", 4],
@@ -305,12 +305,167 @@
     const echo = (question, label) => ({ ...question, prompt: `${label}：${question.prompt}` });
     return { ...current, questions: [...current.questions, echo(yesterday, "昨日回声"), echo(fiveDaysAgo, "五日回声")] };
   };
+  // 本轮根据孩子的实际进度生成；旧语文题保留为理解练习素材。
+  const targetedChoice = (prompt, visual, answer, wrongAnswers, extra = {}) => {
+    const question = choice(prompt, visual, answer, wrongAnswers, extra);
+    const count = extra.optionCount || 4;
+    const candidates = [answer, ...new Set(wrongAnswers.filter((item) => item !== answer))].slice(0, count);
+    const shift = hash(`${prompt}${visual}${answer}`) % candidates.length;
+    question.answers = [...candidates.slice(shift), ...candidates.slice(0, shift)];
+    question.correct = question.answers.indexOf(answer);
+    return question;
+  };
+  const syllableGroups = [
+    ["b", "ā", "八"], ["p", "á", "爬"], ["m", "ǐ", "米"], ["f", "ǔ", "斧"],
+    ["d", "à", "大"], ["t", "ǔ", "土"], ["n", "í", "泥"], ["m", "ǎ", "马"],
+    ["b", "ǐ", "笔"], ["p", "í", "皮"], ["d", "ì", "地"], ["t", "ī", "梯"],
+    ["l", "í", "梨"], ["l", "ù", "路"], ["l", "ǚ", "旅"], ["l", "è", "乐"],
+    ["g", "ē", "哥"], ["g", "ǔ", "鼓"], ["k", "ě", "可"], ["k", "ù", "库"],
+    ["h", "é", "河"], ["h", "ǔ", "虎"], ["g", "è", "个"], ["h", "ú", "胡"]
+  ];
+  const phraseGroups = [
+    ["大米", "dà mǐ", 0], ["木马", "mù mǎ", 0], ["地图", "dì tú", 0],
+    ["泥土", "ní tǔ", 0], ["皮肤", "pí fū", 0], ["肚皮", "dù pí", 0],
+    ["题目", "tí mù", 0], ["笔墨", "bǐ mò", 0], ["木梯", "mù tī", 0],
+    ["马匹", "mǎ pǐ", 0], ["布匹", "bù pǐ", 0], ["妈妈", "mā ma", 0],
+    ["马路", "mǎ lù", 1], ["大礼", "dà lǐ", 1], ["梨皮", "lí pí", 1],
+    ["蘑菇", "mó gu", 2], ["哥哥", "gē ge", 2], ["打鼓", "dǎ gǔ", 2],
+    ["可乐", "kě lè", 2], ["河马", "hé mǎ", 2], ["葫芦", "hú lu", 2],
+    ["河堤", "hé dī", 2], ["大河", "dà hé", 2], ["拔河", "bá hé", 2]
+  ];
+  const toneVowels = ["āáǎà", "ōóǒò", "ēéěè", "īíǐì", "ūúǔù", "ǖǘǚǜ"];
+  const toneOf = (text) => {
+    for (const vowels of toneVowels) {
+      for (let tone = 0; tone < 4; tone += 1) if (text.includes(vowels[tone])) return tone;
+    }
+    return -1;
+  };
+  const otherPhrases = (pool, item, column) => pool.filter((entry) => entry !== item).map((entry) => entry[column]);
+  const comprehensionPool = [
+    ...chineseSpecial.flatMap((entry) => entry.questions),
+    ...hanziUnits.map(makeHanziLesson).map((entry) => entry.questions[2]),
+    ...readingUnits.map(makeReadingLesson).map((entry) => entry.questions[0])
+  ];
+  const pinyinCoreFor = (index) => {
+    const level = index < 3 ? 0 : index < 6 ? 1 : 2;
+    const available = syllableGroups.slice(0, level === 0 ? 12 : level === 1 ? 16 : 24);
+    const focused = level === 0 ? available : level === 1 ? available.slice(12) : available.slice(16);
+    const syllable = focused[index % focused.length];
+    const [initial, final] = syllable;
+    const sound = initial + final;
+    const textCharacter = focused[(index + 1) % focused.length];
+    const soundCharacter = focused[(index + 1 + Math.ceil(focused.length / 2)) % focused.length];
+    const words = phraseGroups.filter((entry) => entry[2] <= level);
+    const wordA = words[index % words.length];
+    const wordB = words[(index + 4) % words.length];
+    const wordC = words[(index + 8) % words.length];
+    const tone = toneOf(final);
+    return [
+      targetedChoice("看看声调，读的是第几声？", sound, toneNames[tone], toneNames.filter((_, i) => i !== tone), { skill: "pinyin-tone", visualClass: "pinyin-text" }),
+      targetedChoice("看看这个字，选出它的拼音。", textCharacter[2], textCharacter[0] + textCharacter[1], available.filter((entry) => entry !== textCharacter).map(([a, b]) => a + b), { skill: "text-to-pinyin" }),
+      targetedChoice("读一读拼音，选出对应的汉字。", soundCharacter[0] + soundCharacter[1], soundCharacter[2], otherPhrases(available, soundCharacter, 2), { skill: "pinyin-to-text", visualClass: "pinyin-text" }),
+      targetedChoice("先读词语，再选出它的拼音。", wordA[0], wordA[1], otherPhrases(words, wordA, 1), { skill: "text-to-pinyin" }),
+      targetedChoice("先拼一拼，选出对应的词语。", wordB[1], wordB[0], otherPhrases(words, wordB, 0), { skill: "pinyin-to-text", visualClass: "pinyin-text" }),
+      targetedChoice("读一读拼音，选出对应的词语。", wordC[1], wordC[0], otherPhrases(words, wordC, 0), { skill: "pinyin-to-text", visualClass: "pinyin-text", example: `自己先拼读一次，再选择。${wordC[1].split(" ").some((part) => toneOf(part) < 0) ? "没有声调的小音节读轻声。" : ""}` })
+    ];
+  };
+  const targetedChinese = Array.from({ length: 60 }, (_, index) => {
+    const core = pinyinCoreFor(index);
+    const echoIndex = Math.max(0, index - (index % 2 ? 5 : 1));
+    const echoQuestion = pinyinCoreFor(echoIndex)[3 + index % 3];
+    const understanding = Array.from({ length: 3 }, (_, offset) => ({ ...comprehensionPool[(index * 3 + offset) % comprehensionPool.length], skill: "understanding" }));
+    return lesson(index < 3 ? "已学拼音·拼读热身" : index < 6 ? "新课 l·和熟悉音节一起读" : "l g k h·拼音和词语天天练", "1道声调 + 6道字词与拼音互选 + 3道理解", [
+      ...core,
+      { ...echoQuestion, prompt: `${index === 0 ? "热身再练" : index % 2 ? "五日回声" : "昨日回声"}：${echoQuestion.prompt}` },
+      ...understanding
+    ], "v 在拼音中写作 ü。先复习 a o e i u ü、b p m f d t n，再练 l g k h；暂不加入 j q x、复韵母和鼻韵母。词语、阅读理解可请家长读题，不要求这些字都已认识。");
+  });
+
+  const arithmetic = (a, op, b, prompt = "算一算。") => {
+    const value = op === "+" ? a + b : a - b;
+    return targetedChoice(prompt, `${a} ${op === "-" ? "−" : "+"} ${b} = ?`, String(value), [value - 1, value + 1, value + 2, value - 2].filter((n) => n >= 0 && n <= 20).map(String), { skill: "arithmetic", operands: [a, b], operator: op, value });
+  };
+  const mathConcepts = (index) => {
+    const n = 11 + index % 9;
+    const a = 4 + index % 6;
+    const b = 2 + index % 4;
+    return [
+      targetedChoice("这个数由几个十、几个一组成？", String(n), `1个十和${n - 10}个一`, [`${n - 10}个十和1个一`, `1个十和${n - 9}个一`, "2个十和0个一"], { skill: "place-value" }),
+      targetedChoice("哪个符号能填进问号处？", `${n}　?　${n - 2}`, ">", ["<", "=", "+"], { skill: "comparison" }),
+      targetedChoice("观察规律，下一项是几？", `${b}，${b + 2}，${b + 4}，?`, String(b + 6), [String(b + 5), String(b + 7), String(b + 8)], { skill: "pattern" }),
+      targetedChoice("从左边开始数，星星排第几？", "🍎　🍐　⭐　🍌　🍊", "第3", ["第2", "第4", "第5"], { skill: "ordinal" }),
+      targetedChoice("哪种物品的形状接近圆柱？", "找找生活中的立体图形", "直直的圆柱形易拉罐", ["皮球", "魔方", "长方体纸盒"], { skill: "shape" }),
+      targetedChoice(`小彪有${a}块积木，妹妹有${b}块，小彪比妹妹多几块？`, "比较两个人的积木", String(a - b), [String(a + b), String(a - b + 1), String(a - b + 2)], { skill: "word-problem" }),
+      targetedChoice(`盒子里原有${n}颗珠子，拿走${b}颗，还剩多少颗？`, "想一想，拿走要用什么方法？", String(n - b), [String(n - b + 1), String(n - b - 1), String(n)], { skill: "word-problem" }),
+      targetedChoice("左右两边同样多，问号里填几？", `${a} + ? = ${a + b}`, String(b), [String(b + 1), String(b - 1), String(a + b)], { skill: "missing-number" })
+    ];
+  };
+  const strongerMath = Array.from({ length: 60 }, (_, index) => {
+    let calculations;
+    if (index < 10) {
+      const a = 11 + index % 8;
+      const b = Math.min(20 - a, 2 + index % 5);
+      calculations = [arithmetic(a, "+", b)];
+      // 不进位热身：个位够减，先建立十和一的关系。
+      const n = 13 + index % 7;
+      calculations[1] = arithmetic(n, "-", 1 + index % Math.min(3, n - 10));
+    } else if (index < 25) {
+      const a = 6 + index % 4;
+      const b = 11 - a + index % 5;
+      calculations = [arithmetic(a, "+", b, "可以先凑成10，再算一算。"), arithmetic(15 + index % 5, "-", 1 + index % 4)];
+    } else {
+      const a = 6 + index % 4;
+      const b = 11 - a + index % 6;
+      const total = 11 + index % 7;
+      const take = total - 10 + 1 + index % 2;
+      calculations = [arithmetic(a, "+", b), arithmetic(total, "-", take, "个位不够减，可以先想怎样拆数。")];
+    }
+    const concepts = mathConcepts(index);
+    return lesson(index < 10 ? "20以内·十和一、加减热身" : index < 25 ? "20以内·凑十加法" : "20以内·加减综合和生活应用", "2道运算 + 1道数的分合 + 2道基础概念或应用", [
+      ...calculations,
+      concepts[7],
+      concepts[index % 7],
+      concepts[(index + 3) % 7]
+    ], "可以用小棒、手指或画圆圈帮忙。先算对并说出想法，再慢慢提高速度。");
+  });
+
+  const starterWords = [
+    ["打招呼", "hello", "你好", "👋"], ["打招呼", "bye", "再见", "👋"],
+    ["小动物", "cat", "猫", "🐱"], ["小动物", "dog", "狗", "🐶"],
+    ["小动物", "fish", "鱼", "🐟"], ["小动物", "bird", "鸟", "🐦"],
+    ["水果时间", "apple", "苹果", "🍎"], ["水果时间", "banana", "香蕉", "🍌"],
+    ["我的物品", "book", "书", "📕"], ["我的物品", "ball", "球", "⚽"],
+    ["我的物品", "pen", "笔", "🖊️"], ["我的物品", "bag", "包", "🎒"],
+    ["我的身体", "eye", "眼睛", "👁️"], ["我的身体", "ear", "耳朵", "👂"],
+    ["我的身体", "nose", "鼻子", "👃"], ["我的身体", "hand", "手", "✋"],
+    ["颜色游戏", "red", "红色", "🔴"], ["颜色游戏", "blue", "蓝色", "🔵"],
+    ["颜色游戏", "green", "绿色", "🟢"], ["颜色游戏", "yellow", "黄色", "🟡"]
+  ];
+  const easyEnglish = Array.from({ length: 60 }, (_, index) => {
+    const wordIndex = Math.floor(index / 3);
+    const item = starterWords[wordIndex];
+    const [topic, word, meaning, emoji] = item;
+    // 每个词连续三天见面；干扰项也只使用已接触过的词和最初的打招呼用语。
+    const known = starterWords.slice(0, Math.max(2, wordIndex + 1));
+    const alternatives = (target, column) => known.filter((entry) => entry !== target).map((entry) => entry[column]).slice(-2);
+    const reviewItem = starterWords[Math.max(0, wordIndex - 1)];
+    const olderItem = starterWords[Math.max(0, wordIndex - 2)];
+    const opts = { optionCount: index < 15 ? 2 : 3, speech: word, skill: "english-word", visualClass: "english-text" };
+    const review = (entry, label) => targetedChoice(`${label}：听一听，选出它的意思。`, "🔊", entry[2], alternatives(entry, 2), { ...opts, speech: entry[1], visualClass: "" });
+    return lesson(`${topic}·${word}（第${index % 3 + 1}次见面）`, "每天只练一个核心词：听一听、认图片、再跟读", [
+      targetedChoice("看看图片，点扬声器听一听，它是什么意思？", emoji, meaning, alternatives(item, 2), { ...opts, visualClass: "" }),
+      targetedChoice(`“${meaning}”的英语是哪个？可以点扬声器帮忙。`, emoji, word, alternatives(item, 1), { ...opts, visualClass: "" }),
+      targetedChoice("这个单词是什么意思？听完再选一选。", word, meaning, alternatives(item, 2), opts),
+      review(reviewItem, index < 3 ? "一起热身" : "熟词再见"),
+      review(olderItem, index < 6 ? "再听一次" : "老朋友回声")
+    ], "每个词用三天练熟，前15天两选一，之后逐步三选一。不考拼写，不做长句翻译；跟读练习自愿参加。");
+  });
   const days = Array.from({ length: 60 }, (_, index) => ({
     day: index + 1,
-    stage: stageFor(index + 1),
-    chinese: addEchoQuestions(chineseLessons, index),
-    math: addEchoQuestions(mathLessons, index),
-    english: addEchoQuestions(englishLessons, index)
+    stage: index < 10 ? "按当前能力·基础热身" : index < 25 ? "按当前能力·巩固拼读" : "按当前能力·综合练习",
+    chinese: targetedChinese[index],
+    math: strongerMath[index],
+    english: easyEnglish[index]
   }));
 
   if (chineseLessons.length !== 60 || mathLessons.length !== 60 || englishLessons.length !== 60) {
@@ -318,15 +473,16 @@
   }
 
   window.STUDY_CURRICULUM = {
-    version: "2026.08-60day-v2-textbook",
+    version: "2026.10-60day-v3-personalized",
+    title: "针对性强化课程",
     days,
     design: {
       dailySubjects: 3,
-      questionsPerSubject: 5,
+      questionsPerSubject: { chinese: 10, math: 5, english: 5 },
       totalDays: 60,
-      totalQuestionInstances: 900,
-      reviewRhythm: "每天复现前一日内容和五日前内容，并在教材单元末安排整理复习",
-      alignment: "语文统编版（2024修订）一年级上册；数学人教版（2024修订）一年级上册；英语北京版（2024）一年级上册"
+      totalQuestionInstances: 1200,
+      reviewRhythm: "语文交替加入昨日与五日前拼读；英语同一核心词连续三天并复习熟词",
+      alignment: "按孩子实际能力调整：语文限已学单韵母和b p m f d t n l g k h；数学20以内；英语20个入门词"
     }
   };
 })();
