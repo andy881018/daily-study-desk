@@ -163,7 +163,9 @@
     if (state.daily.overallRewarded) {
       overallBonus.classList.add("is-done");
       overallBonus.disabled = true;
-      overallBonus.innerHTML = `<span class="overall-bonus-word" aria-hidden="true">夯</span><span class="overall-bonus-copy"><small>家长今日评价</small><strong>今天已经夯过啦</strong></span><span class="overall-bonus-status">+2金币</span>`;
+      overallBonus.title = "今天已经完成家长评价";
+      overallBonus.setAttribute("aria-label", "今天已经夯过，已获得2金币");
+      overallBonus.innerHTML = `<span class="hero-bonus-word" aria-hidden="true">夯</span><span class="hero-bonus-points">✓</span>`;
     } else {
       overallBonus.addEventListener("click", openOverallBonusConfirmation);
     }

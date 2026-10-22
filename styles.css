@@ -73,7 +73,16 @@ button { -webkit-tap-highlight-color: transparent; }
 .hero h1 { margin: 0; font-size: clamp(28px, 6.6vw, 49px); line-height: 1.2; text-shadow: 0 4px 0 rgba(26, 52, 99, .35); }
 .hero p { margin: 18px 0 0; color: #e7f2ff; font-size: clamp(16px, 3.6vw, 24px); }
 .hero .eyebrow { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: 2px; opacity: .74; }
-.hero-coin { position: absolute; top: 27px; right: 28px; font-size: 38px; transform: rotate(-12deg); filter: drop-shadow(0 5px 1px rgba(25,45,75,.35)); }
+.hero-bonus-button {
+  position: absolute; top: 18px; right: 18px; z-index: 3; display: grid; place-items: center; width: 68px; height: 68px; padding: 0;
+  border: 4px solid #f0c35b; border-radius: 20px; color: #fff; background: linear-gradient(#f5b72e, #e68a13);
+  box-shadow: inset 0 -7px 0 rgba(150,82,0,.22), 0 6px 0 #b8760e; cursor: pointer; transform: rotate(7deg);
+}
+.hero-bonus-word { display: block; font-size: 31px; font-weight: 900; line-height: 1; text-shadow: 0 2px 0 #a95e00; }
+.hero-bonus-points { display: block; margin-top: 3px; font-size: 13px; font-weight: 900; line-height: 1; }
+.hero-bonus-button:hover { background: linear-gradient(#ffd061, #ef991e); }
+.hero-bonus-button:active { transform: rotate(7deg) translateY(4px); box-shadow: inset 0 -4px 0 rgba(150,82,0,.22), 0 2px 0 #b8760e; }
+.hero-bonus-button.is-done { border-color: #b9dcc4; background: linear-gradient(#63c878, #2eaa4b); box-shadow: inset 0 -7px 0 rgba(26,114,49,.2), 0 6px 0 #25853b; cursor: default; }
 .settings-button {
   position: absolute; top: 18px; left: 18px; z-index: 3; display: grid; place-items: center;
   width: 46px; height: 46px; padding: 0; border: 2px solid rgba(255,255,255,.55); border-radius: 50%;
@@ -130,22 +139,6 @@ button { -webkit-tap-highlight-color: transparent; }
 .checkin-button span:first-child { margin-right: 10px; }
 .checkin-button.is-done { background: linear-gradient(#55c96a, #2eaa4b); box-shadow: 0 10px 0 #1e7d35; }
 .checkin-button.is-locked { color: #707b87; background: linear-gradient(#e7ebef, #cfd6dc); box-shadow: 0 10px 0 #aeb8c1; }
-
-.overall-bonus-button {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; width: 100%; min-height: 78px;
-  margin: -16px 0 38px; padding: 12px 18px; border: 4px solid #f0c35b; border-radius: 20px; color: #6d4a00;
-  text-align: left; background: #fff8dd; box-shadow: 0 7px 0 #d9ac35; cursor: pointer;
-}
-.overall-bonus-word { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 14px; color: #fff; background: linear-gradient(#f5b72e, #e68a13); box-shadow: inset 0 -5px 0 rgba(150,82,0,.22); font-size: 30px; font-weight: 900; }
-.overall-bonus-copy { display: grid; min-width: 0; }
-.overall-bonus-copy small { color: #947329; font-size: 12px; font-weight: 800; }
-.overall-bonus-copy strong { margin-top: 3px; color: #7b4d00; font-size: 18px; }
-.overall-bonus-status { color: #ae7500; font-size: 13px; font-weight: 900; white-space: nowrap; }
-.overall-bonus-button:hover { background: #fff0b8; }
-.overall-bonus-button:active { transform: translateY(4px); box-shadow: 0 3px 0 #d9ac35; }
-.overall-bonus-button.is-done { border-color: #b9dcc4; color: #2e713f; background: #effaf2; box-shadow: 0 7px 0 #9ccbaa; cursor: default; }
-.overall-bonus-button.is-done .overall-bonus-word { background: linear-gradient(#63c878, #2eaa4b); }
-.overall-bonus-button.is-done .overall-bonus-copy strong, .overall-bonus-button.is-done .overall-bonus-status { color: #2e713f; }
 
 .subject-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 22px; }
 .subject-grid.three-subjects { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -444,7 +437,9 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 520px) {
   .app-shell { padding: 12px 12px 50px; }
   .hero { min-height: 180px; padding: 34px 18px 54px; }
-  .hero-coin { top: 18px; right: 16px; font-size: 30px; }
+  .hero-bonus-button { top: 13px; right: 13px; width: 57px; height: 57px; border-radius: 17px; }
+  .hero-bonus-word { font-size: 27px; }
+  .hero-bonus-points { font-size: 11px; }
   .settings-button { top: 13px; left: 13px; width: 40px; height: 40px; font-size: 21px; }
   .hero-shelf { left: 18px; right: 18px; }
   .stats { gap: 8px; margin-top: 30px; }
@@ -452,8 +447,6 @@ button { -webkit-tap-highlight-color: transparent; }
   .weekly-shortcut { min-height: 70px; padding: 11px 14px; }
   .weekly-shortcut-icon { font-size: 30px; }
   .checkin-button { min-height: 82px; border-radius: 22px; }
-  .overall-bonus-button { margin-top: -8px; margin-bottom: 32px; padding: 11px 13px; }
-  .overall-bonus-word { width: 45px; height: 45px; font-size: 27px; }
   .subject-grid { gap: 20px 12px; }
   .subject-grid.three-subjects { grid-template-columns: 1fr; }
   .subject-card { min-height: 242px; padding: 26px 10px 22px; border-width: 5px; border-radius: 22px; }

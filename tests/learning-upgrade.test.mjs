@@ -262,7 +262,7 @@ test("浏览器：奖励新增编辑与更新保留、10题流程、金币上限
     assert.deepEqual(saved.rewards, afterRedemption.rewards);
     assert.equal(saved.coins, 355);
     const overallBonus = page.locator("#overall-bonus-button");
-    assert.match(await overallBonus.innerText(), /夯一下/);
+    assert.match(await overallBonus.innerText(), /夯/);
     await overallBonus.click();
     assert.equal(await page.locator("#overall-bonus-dialog").isVisible(), true);
     await page.getByRole("button", { name: "确认加2金币", exact: true }).click();
