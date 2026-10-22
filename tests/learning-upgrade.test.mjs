@@ -53,10 +53,15 @@ test("60天题库：题数、唯一答案、拼音边界、数学范围和英语
       if (index < 10 && q.operator === "-") assert.ok(q.operands[0] % 10 >= q.operands[1]);
     });
     assert.ok(day.english.questions.every((q) => q.answers.length <= (index < 15 ? 2 : 3)));
-    if (index % 3 !== 0) assert.equal(day.english.questions[0].speech, curriculum.days[index - 1].english.questions[0].speech);
+    if (index > 0 && index < 40 && index % 2 === 1) assert.equal(day.english.questions[0].speech, curriculum.days[index - 1].english.questions[0].speech);
+    if (index > 1 && index < 40 && index % 2 === 0) assert.notEqual(day.english.questions[0].speech, curriculum.days[index - 1].english.questions[0].speech);
+    if (index > 0) assert.notEqual(day.english.title, curriculum.days[index - 1].english.title);
   });
   assert.equal(count, 1200);
   assert.equal(new Set(curriculum.days.map((d) => d.english.questions[0].speech)).size, 20);
+  const englishSpeeches = curriculum.days.map((day) => day.english.questions[0].speech);
+  for (let index = 40; index < englishSpeeches.length; index += 1) assert.notEqual(englishSpeeches[index], englishSpeeches[index - 1]);
+  assert.equal(new Set(curriculum.days.slice(40).map((day) => day.english.questions[0].speech)).size, 20);
 });
 
 test("浏览器：奖励新增编辑与更新保留、10题流程、金币上限和跟读", { timeout: 120000 }, async () => {
@@ -256,6 +261,19 @@ test("浏览器：奖励新增编辑与更新保留、10题流程、金币上限
     saved = await savedState();
     assert.deepEqual(saved.rewards, afterRedemption.rewards);
     assert.equal(saved.coins, 355);
+    const overallBonus = page.locator("#overall-bonus-button");
+    assert.match(await overallBonus.innerText(), /夯一下/);
+    await overallBonus.click();
+    assert.equal(await page.locator("#overall-bonus-dialog").isVisible(), true);
+    await page.getByRole("button", { name: "确认加2金币", exact: true }).click();
+    saved = await savedState();
+    assert.equal(saved.coins, 357);
+    assert.equal(saved.daily.overallRewarded, true);
+    assert.equal(await page.locator("#overall-bonus-button").isDisabled(), true);
+    await page.reload();
+    assert.equal((await savedState()).coins, 357);
+    assert.equal((await savedState()).daily.overallRewarded, true);
+    assert.equal(await page.locator("#overall-bonus-button").isDisabled(), true);
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

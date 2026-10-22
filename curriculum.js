@@ -442,23 +442,51 @@
     ["颜色游戏", "green", "绿色", "🟢"], ["颜色游戏", "yellow", "黄色", "🟡"]
   ];
   const easyEnglish = Array.from({ length: 60 }, (_, index) => {
-    const wordIndex = Math.floor(index / 3);
+    // 前40天每个词只连续出现两天；后20天进入混合复习，避免连续三四天做同一套题。
+    const firstPass = index < starterWords.length * 2;
+    const wordIndex = firstPass ? Math.floor(index / 2) : index - starterWords.length * 2;
     const item = starterWords[wordIndex];
     const [topic, word, meaning, emoji] = item;
-    // 每个词连续三天见面；干扰项也只使用已接触过的词和最初的打招呼用语。
-    const known = starterWords.slice(0, Math.max(2, wordIndex + 1));
-    const alternatives = (target, column) => known.filter((entry) => entry !== target).map((entry) => entry[column]).slice(-2);
-    const reviewItem = starterWords[Math.max(0, wordIndex - 1)];
-    const olderItem = starterWords[Math.max(0, wordIndex - 2)];
-    const opts = { optionCount: index < 15 ? 2 : 3, speech: word, skill: "english-word", visualClass: "english-text" };
-    const review = (entry, label) => targetedChoice(`${label}：听一听，选出它的意思。`, "🔊", entry[2], alternatives(entry, 2), { ...opts, speech: entry[1], visualClass: "" });
-    return lesson(`${topic}·${word}（第${index % 3 + 1}次见面）`, "每天只练一个核心词：听一听、认图片、再跟读", [
-      targetedChoice("看看图片，点扬声器听一听，它是什么意思？", emoji, meaning, alternatives(item, 2), { ...opts, visualClass: "" }),
-      targetedChoice(`“${meaning}”的英语是哪个？可以点扬声器帮忙。`, emoji, word, alternatives(item, 1), { ...opts, visualClass: "" }),
-      targetedChoice("这个单词是什么意思？听完再选一选。", word, meaning, alternatives(item, 2), opts),
-      review(reviewItem, index < 3 ? "一起热身" : "熟词再见"),
-      review(olderItem, index < 6 ? "再听一次" : "老朋友回声")
-    ], "每个词用三天练熟，前15天两选一，之后逐步三选一。不考拼写，不做长句翻译；跟读练习自愿参加。");
+    const cycle = firstPass ? index % 2 : (index - starterWords.length * 2) % 3;
+    const known = starterWords.slice(0, firstPass ? Math.max(2, wordIndex + 1) : starterWords.length);
+    const alternatives = (target, column, extra = []) => [...new Set([
+      ...known.filter((entry) => entry !== target).map((entry) => entry[column]),
+      ...extra
+    ])].filter((value) => value !== target[column]).slice(0, 3);
+    const reviewItem = starterWords[(wordIndex + (cycle === 2 ? 2 : 1)) % starterWords.length];
+    const olderItem = starterWords[(wordIndex + (cycle === 0 ? starterWords.length - 2 : starterWords.length - 3)) % starterWords.length];
+    const optionCount = index < 15 ? 2 : 3;
+    const opts = { optionCount, speech: word, skill: "english-word", visualClass: "english-text" };
+    const wordOptions = (target) => alternatives(target, 1);
+    const meaningOptions = (target) => alternatives(target, 2);
+    const imageOptions = (target) => alternatives(target, 3, ["🐱", "🍎", "📕", "⚽"]);
+    const review = (entry, label, mode = cycle) => {
+      if (mode === 1) return targetedChoice(`${label}：看单词，选出对应的图片。`, entry[1], entry[3], imageOptions(entry), { ...opts, speech: entry[1], visualClass: "" });
+      if (mode === 2) return targetedChoice(`${label}：听一听，选出对应的单词。`, "🔊", entry[1], wordOptions(entry), { ...opts, speech: entry[1], visualClass: "" });
+      return targetedChoice(`${label}：听一听，选出它的意思。`, "🔊", entry[2], meaningOptions(entry), { ...opts, speech: entry[1], visualClass: "" });
+    };
+    const questions = cycle === 0 ? [
+      targetedChoice("看看图片，点扬声器听一听，它是什么意思？", emoji, meaning, meaningOptions(item), { ...opts, visualClass: "" }),
+      targetedChoice(`“${meaning}”的英语是哪个？可以点扬声器帮忙。`, emoji, word, wordOptions(item), { ...opts, visualClass: "" }),
+      targetedChoice("这个单词是什么意思？听完再选一选。", word, meaning, meaningOptions(item), opts),
+      review(reviewItem, firstPass ? "上一词回声" : "混合复习"),
+      review(olderItem, "再听一次")
+    ] : cycle === 1 ? [
+      targetedChoice("听一听，选出你听到的单词。", "🔊", word, wordOptions(item), { ...opts, visualClass: "" }),
+      targetedChoice("看一看单词，选出对应的图片。", word, emoji, imageOptions(item), opts),
+      targetedChoice("听一听，选出这个词的中文意思。", "🔊", meaning, meaningOptions(item), { ...opts, visualClass: "" }),
+      review(reviewItem, firstPass ? "上一词回声" : "混合复习", 1),
+      review(olderItem, "再听一次", 2)
+    ] : [
+      targetedChoice("哪个单词和这张图片是一对？", emoji, word, wordOptions(item), { ...opts, visualClass: "" }),
+      targetedChoice("看单词，选出它的意思。", word, meaning, meaningOptions(item), opts),
+      targetedChoice("听一听，选出对应的图片。", "🔊", emoji, imageOptions(item), { ...opts, visualClass: "" }),
+      review(reviewItem, "混合复习", 2),
+      review(olderItem, "老朋友回声", 1)
+    ];
+    const phaseTitle = firstPass ? `${topic}·${word}（第${cycle + 1}次练习）` : `综合复习·${word}`;
+    const phaseNote = firstPass ? "每个词最多连续练两天：先认图和意思，再听音、认词和跟读。" : "把学过的词混在一起复习，题型会轮换，不连续重复同一套题。";
+    return lesson(phaseTitle, "听一听、认图片、选词义，再自愿跟读", questions, `${phaseNote}前15天两选一，之后逐步三选一。不考拼写，不做长句翻译；跟读练习自愿参加。`);
   });
   const days = Array.from({ length: 60 }, (_, index) => ({
     day: index + 1,
@@ -481,7 +509,7 @@
       questionsPerSubject: { chinese: 10, math: 5, english: 5 },
       totalDays: 60,
       totalQuestionInstances: 1200,
-      reviewRhythm: "语文交替加入昨日与五日前拼读；英语同一核心词连续三天并复习熟词",
+      reviewRhythm: "语文交替加入昨日与五日前拼读；英语每个词连续最多两天，后20天混合复习",
       alignment: "按孩子实际能力调整：语文限已学单韵母和b p m f d t n l g k h；数学20以内；英语20个入门词"
     }
   };

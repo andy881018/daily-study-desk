@@ -41,7 +41,7 @@
     lastCheckin: "",
     activeSeconds: 0,
     activeDate: today(),
-    daily: { date: today(), completed: [], rewardedStars: {} },
+    daily: { date: today(), completed: [], rewardedStars: {}, overallRewarded: false },
     program: { version: curriculum.version, completedDays: 0, records: {}, history: [], curriculumStartDay: 1 },
     review: [],
     rewards: { custom: [], counts: {}, history: [] },
@@ -92,8 +92,9 @@
         merged.activeDate = today();
         merged.activeSeconds = 0;
       }
-      if (merged.daily.date !== today()) merged.daily = { date: today(), completed: [], rewardedStars: {} };
+      if (merged.daily.date !== today()) merged.daily = { date: today(), completed: [], rewardedStars: {}, overallRewarded: false };
       merged.daily.rewardedStars = { ...(merged.daily.rewardedStars || {}) };
+      merged.daily.overallRewarded = Boolean(merged.daily.overallRewarded);
       const recordsForToday = [merged.program.records, ...merged.program.history.map((entry) => entry.records || {})];
       recordsForToday.flatMap((records) => Object.entries(records)).forEach(([key, record]) => {
         const subject = key.split(":").pop();
@@ -158,6 +159,14 @@
     $("#settings-button").addEventListener("click", openSettings);
     $("#coin-store-button").addEventListener("click", renderRewardCenter);
     $("#weekly-shortcut").addEventListener("click", () => $("#weekly-activities").scrollIntoView({ behavior: "smooth", block: "start" }));
+    const overallBonus = $("#overall-bonus-button");
+    if (state.daily.overallRewarded) {
+      overallBonus.classList.add("is-done");
+      overallBonus.disabled = true;
+      overallBonus.innerHTML = `<span class="overall-bonus-word" aria-hidden="true">夯</span><span class="overall-bonus-copy"><small>家长今日评价</small><strong>今天已经夯过啦</strong></span><span class="overall-bonus-status">+2金币</span>`;
+    } else {
+      overallBonus.addEventListener("click", openOverallBonusConfirmation);
+    }
 
     const resting = isRestingToday();
     const day = resting ? Math.max(1, state.program.completedDays) : activeDayNumber();
@@ -240,6 +249,39 @@
     saveState();
     renderHome();
     showToast(state.program.completedDays === 60 ? "60天计划完成，太了不起了！" : `第${day}天打卡成功，奖励10枚金币！`);
+  }
+
+  function openOverallBonusConfirmation() {
+    if (state.daily.overallRewarded) return showToast("今天已经夯过啦");
+    $("#overall-bonus-dialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "overall-bonus-dialog";
+    dialog.className = "redeem-dialog weekly-dialog";
+    dialog.innerHTML = `
+      <div class="redeem-confirm weekly-confirm">
+        <div class="confirm-icon" aria-hidden="true">夯</div>
+        <span class="confirm-kicker">家长确认</span>
+        <h2>今天的整体表现值得表扬吗？</h2>
+        <p>确认后增加 <strong>2</strong> 枚金币<br>每天只能评价一次。</p>
+        <div class="confirm-actions"><button class="confirm-cancel" type="button">暂不评价</button><button class="confirm-overall-bonus" type="button">确认加2金币</button></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    $(".confirm-cancel", dialog).addEventListener("click", () => dialog.close());
+    $(".confirm-overall-bonus", dialog).addEventListener("click", (event) => {
+      event.currentTarget.disabled = true;
+      if (state.daily.overallRewarded) {
+        dialog.close();
+        return showToast("今天已经夯过啦");
+      }
+      state.daily.overallRewarded = true;
+      state.coins += 2;
+      saveState();
+      dialog.close();
+      renderHome();
+      showToast("今天表现很夯，奖励2枚金币！");
+    });
+    dialog.addEventListener("close", () => setTimeout(() => dialog.remove(), 0), { once: true });
+    dialog.showModal();
   }
 
   function renderWeeklyActivities() {
