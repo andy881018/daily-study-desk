@@ -326,7 +326,14 @@
     ["j", "iǎ", "甲"], ["q", "ià", "恰"], ["x", "iá", "侠"], ["x", "ià", "下"],
     ["j", "ū", "居"], ["j", "ú", "菊"], ["j", "ǔ", "举"], ["j", "ù", "句"],
     ["q", "ū", "区"], ["q", "ú", "渠"], ["q", "ǔ", "取"], ["q", "ù", "去"],
-    ["x", "ū", "需"], ["x", "ú", "徐"], ["x", "ǔ", "许"], ["x", "ù", "续"]
+    ["x", "ū", "需"], ["x", "ú", "徐"], ["x", "ǔ", "许"], ["x", "ù", "续"],
+    ["z", "ì", "字"], ["c", "uò", "错"], ["s", "ì", "四"],
+    ["zh", "ī", "知"], ["zh", "í", "直"], ["zh", "ǐ", "纸"], ["zh", "ì", "值"], ["zh", "ū", "朱"],
+    ["ch", "ī", "吃"], ["ch", "ǐ", "尺"], ["ch", "ū", "出"], ["ch", "ē", "车"],
+    ["sh", "ī", "狮"], ["sh", "í", "十"], ["sh", "ū", "书"], ["sh", "ì", "是"], ["sh", "é", "蛇"],
+    ["r", "ù", "入"], ["r", "ì", "日"], ["r", "é", "人"],
+    ["zh", "uō", "桌"], ["zh", "uǎ", "爪"], ["sh", "uā", "刷"], ["sh", "uō", "说"], ["r", "uò", "弱"],
+    ["zh", "ǔ", "主"], ["ch", "uō", "戳"], ["f", "àn", "饭"]
   ];
   const phraseGroups = [
     ["大米", "dà mǐ", 0], ["木马", "mù mǎ", 0], ["地图", "dì tú", 0],
@@ -338,7 +345,16 @@
     ["可乐", "kě lè", 2], ["河马", "hé mǎ", 2], ["葫芦", "hú lu", 2],
     ["河堤", "hé dī", 2], ["大河", "dà hé", 2], ["拔河", "bá hé", 2],
     ["加法", "jiā fǎ", 3], ["下巴", "xià bā", 3], ["家里", "jiā lǐ", 3],
-    ["下课", "xià kè", 3], ["大侠", "dà xiá", 3]
+    ["下课", "xià kè", 3], ["大侠", "dà xiá", 3],
+    ["蜘蛛", "zhī zhū", 4], ["吃饭", "chī fàn", 4], ["狮子", "shī zi", 4],
+    ["直尺", "zhí chǐ", 4], ["说书", "shuō shū", 4], ["桌子", "zhuō zi", 4],
+    ["爪子", "zhuǎ zi", 4], ["车子", "chē zi", 4], ["四十", "sì shí", 4],
+    ["日出", "rì chū", 4], ["主人", "zhǔ rén", 4]
+  ];
+  const dictationGroups = [
+    ["吃", "chī"], ["爪", "zhuǎ"], ["蛇", "shé"], ["入", "rù"], ["是", "shì"], ["桌", "zhuō"],
+    ["字", "zì"], ["尺", "chǐ"], ["书", "shū"], ["戳", "chuō"], ["值", "zhí"], ["弱", "ruò"],
+    ["错", "cuò"], ["说", "shuō"], ["主", "zhǔ"], ["车", "chē"], ["四", "sì"], ["日", "rì"]
   ];
   const toneVowels = ["āáǎà", "ōóǒò", "ēéěè", "īíǐì", "ūúǔù", "ǖǘǚǜ"];
   const toneOf = (text) => {
@@ -348,15 +364,26 @@
     return -1;
   };
   const otherPhrases = (pool, item, column) => pool.filter((entry) => entry !== item).map((entry) => entry[column]);
+  const dictationQuestionFor = (index) => {
+    const [character, sound] = dictationGroups[index % dictationGroups.length];
+    const wrongs = dictationGroups.filter(([item]) => item !== character).map(([item]) => item);
+    return targetedChoice("拔高听写：家长读一读，选出对应的字。", sound, character, wrongs, {
+      skill: "dictation",
+      visualClass: "pinyin-text",
+      example: `请家长先读“${sound}”，孩子再选择汉字。`
+    });
+  };
   const comprehensionPool = [
     ...chineseSpecial.flatMap((entry) => entry.questions),
     ...hanziUnits.map(makeHanziLesson).map((entry) => entry.questions[2]),
     ...readingUnits.map(makeReadingLesson).map((entry) => entry.questions[0])
   ];
   const pinyinCoreFor = (index) => {
-    const level = index < 3 ? 0 : index < 6 ? 1 : index < 9 ? 2 : 3;
-    const available = syllableGroups.slice(0, level === 0 ? 12 : level === 1 ? 16 : level === 2 ? 24 : syllableGroups.length);
-    const focused = level === 0 ? available : level === 1 ? available.slice(12) : level === 2 ? available.slice(16) : available.slice(24);
+    const level = index < 3 ? 0 : index < 6 ? 1 : index < 9 ? 2 : index < 33 ? 3 : 4;
+    const stageRanges = [[0, 12], [12, 16], [16, 24], [24, 43], [43, syllableGroups.length]];
+    const [stageStart, stageEnd] = stageRanges[level];
+    const available = syllableGroups.slice(0, stageEnd);
+    const focused = syllableGroups.slice(stageStart, stageEnd);
     const syllable = focused[index % focused.length];
     const [initial, final] = syllable;
     const sound = initial + final;
@@ -369,13 +396,19 @@
     const tone = toneOf(final);
     const toneQuestion = targetedChoice("看看声调，读的是第几声？", sound, toneNames[tone], toneNames.filter((_, i) => i !== tone), { skill: "pinyin-tone", visualClass: "pinyin-text" });
     const writingQuestion = targetedChoice("j、q、x和ü相拼时，书写上怎样变化？", "j + ü → ju；q + ü → qu；x + ü → xu", "ü上面的两点要去掉", ["ü的两点要保留", "把声母改成g", "不用读声调"], { skill: "pinyin-writing" });
+    const overallQuestion = targetedChoice("本周要重点认读的整体认读音节是哪一组？", "整体认读音节", "zhi、chi、shi、ri", ["z、c、s", "zhuo、zhua、shua", "j、q、x"], { skill: "pinyin-overall", visualClass: "pinyin-text" });
+    const retroflexQuestion = targetedChoice("下面哪一组都是翘舌音？", "平舌音：z、c、s", "zh、ch、sh、r", ["z、c、s", "b、p、m、f", "j、q、x"], { skill: "pinyin-retroflex" });
+    const tripleQuestion = targetedChoice("下面哪个是三拼音节？", "zhī　zhuō　shī", "zhuō", ["zhī", "shī", "rì"], { skill: "pinyin-triple", visualClass: "pinyin-text" });
+    const stageWritingQuestion = targetedChoice("课堂上要把哪组声母在四线三格本上规范书写？", "本周书写练习", "zh、ch、sh、r", ["z、c、s", "j、q、x", "b、p、m、f"], { skill: "pinyin-writing" });
+    const stageQuestion = index % 4 === 0 ? overallQuestion : index % 4 === 1 ? retroflexQuestion : index % 4 === 2 ? tripleQuestion : stageWritingQuestion;
+    const lastCoreQuestion = level >= 4 ? dictationQuestionFor(index) : targetedChoice("读一读拼音，选出对应的词语。", wordC[1], wordC[0], otherPhrases(words, wordC, 0), { skill: "pinyin-to-text", visualClass: "pinyin-text", example: `自己先拼读一次，再选择。${wordC[1].split(" ").some((part) => toneOf(part) < 0) ? "没有声调的小音节读轻声。" : ""}` });
     return [
-      level === 3 && index % 2 === 0 ? writingQuestion : toneQuestion,
+      level === 3 ? (index % 2 === 0 ? writingQuestion : toneQuestion) : level >= 4 ? stageQuestion : toneQuestion,
       targetedChoice("看看这个字，选出它的拼音。", textCharacter[2], textCharacter[0] + textCharacter[1], available.filter((entry) => entry !== textCharacter).map(([a, b]) => a + b), { skill: "text-to-pinyin" }),
       targetedChoice("读一读拼音，选出对应的汉字。", soundCharacter[0] + soundCharacter[1], soundCharacter[2], otherPhrases(available, soundCharacter, 2), { skill: "pinyin-to-text", visualClass: "pinyin-text" }),
       targetedChoice("先读词语，再选出它的拼音。", wordA[0], wordA[1], otherPhrases(words, wordA, 1), { skill: "text-to-pinyin" }),
       targetedChoice("先拼一拼，选出对应的词语。", wordB[1], wordB[0], otherPhrases(words, wordB, 0), { skill: "pinyin-to-text", visualClass: "pinyin-text" }),
-      targetedChoice("读一读拼音，选出对应的词语。", wordC[1], wordC[0], otherPhrases(words, wordC, 0), { skill: "pinyin-to-text", visualClass: "pinyin-text", example: `自己先拼读一次，再选择。${wordC[1].split(" ").some((part) => toneOf(part) < 0) ? "没有声调的小音节读轻声。" : ""}` })
+      lastCoreQuestion
     ];
   };
   const targetedChinese = Array.from({ length: 60 }, (_, index) => {
@@ -383,11 +416,15 @@
     const echoIndex = Math.max(0, index - (index % 2 ? 5 : 1));
     const echoQuestion = pinyinCoreFor(echoIndex)[3 + index % 3];
     const understanding = Array.from({ length: 3 }, (_, offset) => ({ ...comprehensionPool[(index * 3 + offset) % comprehensionPool.length], skill: "understanding" }));
-    return lesson(index < 3 ? "已学拼音·拼读热身" : index < 6 ? "新课 l·和熟悉音节一起读" : index < 9 ? "g k h·拼音和词语天天练" : "j q x·jia qia xia与ü书写", "1道声调或ü书写 + 6道字词与拼音互选 + 3道理解", [
+    const title = index < 3 ? "已学拼音·拼读热身" : index < 6 ? "新课 l·和熟悉音节一起读" : index < 9 ? "g k h·拼音和词语天天练" : index < 33 ? "j q x·jia qia xia与ü书写" : "zh ch sh r·翘舌音、整体认读和三拼音节";
+    const note = index < 33
+      ? "v 在拼音中写作 ü。先复习 a o e i u ü、b p m f d t n，再练 l g k h；本阶段加入 j q x、jia qia xia，以及 j/q/x 后面的 ü 去掉两点写成 ju/qu/xu。暂不加入其他复韵母和鼻韵母。词语、阅读理解可请家长读题，不要求这些字都已认识。"
+      : "本阶段练习翘舌音 zh、ch、sh、r，复习它们和 z、c、s 平舌音的发音区别；重点认读整体认读音节 zhi、chi、shi、ri，拼读 zhuo、zhua、shua、shuo、ruo，并用蜘蛛、吃饭、狮子、直尺、桌子等词语组词。拔高听写覆盖吃、爪、蛇、入、是、桌、字、尺、书、戳、值、弱、错、说、主、车、四、日。书写题只检查在四线三格本上规范练写这组声母，不替代老师的笔画示范。";
+    return lesson(title, "1道阶段重点 + 5道字词与拼音互选 + 1道拔高听写或词语拼读 + 3道理解", [
       ...core,
       { ...echoQuestion, prompt: `${index === 0 ? "热身再练" : index % 2 ? "五日回声" : "昨日回声"}：${echoQuestion.prompt}` },
       ...understanding
-    ], "v 在拼音中写作 ü。先复习 a o e i u ü、b p m f d t n，再练 l g k h；本阶段加入 j q x、jia qia xia，以及 j/q/x 后面的 ü 去掉两点写成 ju/qu/xu。暂不加入其他复韵母和鼻韵母。词语、阅读理解可请家长读题，不要求这些字都已认识。");
+    ], note);
   });
 
   const arithmetic = (a, op, b, prompt = "算一算。") => {
@@ -519,7 +556,7 @@
       totalDays: 60,
       totalQuestionInstances: 1200,
       reviewRhythm: "语文交替加入昨日与五日前拼读；英语每个词连续最多两天，后20天混合复习",
-      alignment: "按孩子实际能力调整：语文推进至 j q x、jia qia xia 和 ju/qu/xu 书写；数学20以内；英语20个入门词"
+      alignment: "按孩子实际能力调整：语文推进至 zh ch sh r、zhi chi shi ri、zhuo zhua shua shuo ruo 及翘舌/平舌音辨析；数学20以内；英语20个入门词"
     }
   };
 })();

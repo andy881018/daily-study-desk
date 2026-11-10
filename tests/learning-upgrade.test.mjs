@@ -15,14 +15,16 @@ test("60天题库：题数、唯一答案、拼音边界、数学范围和英语
   assert.equal(curriculum.days.length, 60);
   let count = 0;
   const stripTone = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const allowed = /^(?:[bpmfdtnlgkhjqx]|[bpmfdtnl]?[aoeiu]|l[uü]|[gkh][aoeu]|[jqx](?:ia|u))$/;
+  const allowed = /^(?:(?:zh|ch|sh|r)|[bpmfdtnlgkhjqxzcsr]|(?:zh|ch|sh|r)[aeiouü]|[bpmfdtnlgkhjqxzcsr]?[aeiouü](?:n|ng)?|[bpmfdtnlgkhjqxzcsr]u[aoe]|(?:zh|ch|sh|r)u[aoe]|[jqx]ia)$/;
+  const specialSkills = ["pinyin-tone", "pinyin-writing", "pinyin-overall", "pinyin-retroflex", "pinyin-triple"];
+  const conversionSkills = ["text-to-pinyin", "pinyin-to-text", "dictation"];
   curriculum.days.forEach((day, index) => {
     assert.equal(day.chinese.questions.length, 10);
     assert.equal(day.math.questions.length, 5);
     assert.equal(day.english.questions.length, 5);
     assert.equal(day.chinese.questions.filter((q) => q.skill === "understanding").length, 3);
-    assert.equal(day.chinese.questions.filter((q) => ["pinyin-tone", "pinyin-writing"].includes(q.skill)).length, 1);
-    assert.equal(day.chinese.questions.filter((q) => ["text-to-pinyin", "pinyin-to-text"].includes(q.skill)).length, 6);
+    assert.equal(day.chinese.questions.filter((q) => specialSkills.includes(q.skill)).length, 1);
+    assert.equal(day.chinese.questions.filter((q) => conversionSkills.includes(q.skill)).length, 6);
     assert.ok(day.chinese.questions.every((q) => !/合起来|拆开|声母和韵母/.test(q.prompt)));
     assert.equal(day.chinese.questions[1].skill, "text-to-pinyin");
     assert.equal(day.chinese.questions[2].skill, "pinyin-to-text");
@@ -65,6 +67,14 @@ test("60天题库：题数、唯一答案、拼音边界、数学范围和英语
   assert.ok(curriculum.days.slice(9).some((day) => day.chinese.title.includes("j q x")));
   assert.ok(curriculum.days.slice(9).some((day) => day.chinese.questions.some((q) => q.skill === "pinyin-writing")));
   assert.ok(curriculum.days.slice(9).some((day) => day.chinese.questions.some((q) => /jiā|qiā|xiā|xià/.test(`${q.visual}${q.answers.join("")}`))));
+  assert.ok(curriculum.days.slice(33).every((day) => day.chinese.title.includes("zh ch sh r")));
+  assert.ok(curriculum.days.slice(33).some((day) => day.chinese.questions.some((q) => q.skill === "pinyin-overall")));
+  assert.ok(curriculum.days.slice(33).some((day) => day.chinese.questions.some((q) => q.skill === "pinyin-retroflex")));
+  assert.ok(curriculum.days.slice(33).some((day) => day.chinese.questions.some((q) => q.skill === "pinyin-triple")));
+  assert.ok(curriculum.days.slice(33).some((day) => day.chinese.questions.some((q) => q.skill === "dictation" && /拔高听写/.test(q.prompt))));
+  assert.ok(curriculum.days.slice(33).some((day) => /zhuō|zhuǎ|shuā|shuō|ruò/.test(`${day.chinese.questions.map((q) => q.visual).join("")}${day.chinese.questions.flatMap((q) => q.answers).join("")}`)));
+  const dictationChars = new Set(curriculum.days.slice(33).flatMap((day) => day.chinese.questions.filter((q) => q.skill === "dictation").map((q) => q.answers[q.correct])));
+  assert.deepEqual(dictationChars, new Set(["吃", "爪", "蛇", "入", "是", "桌", "字", "尺", "书", "戳", "值", "弱", "错", "说", "主", "车", "四", "日"]));
 });
 
 test("浏览器：奖励新增编辑与更新保留、10题流程、金币上限和跟读", { timeout: 120000 }, async () => {
