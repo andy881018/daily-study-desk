@@ -118,7 +118,15 @@
   function isRestingToday() { return state.lastCheckin === today(); }
   function dailyKey(day, subject) { return `day-${day}:${subject}`; }
   function recordKey(day, subject) { return `${curriculum.version}:${day}:${subject}`; }
-  function dayLesson(day) { return curriculum.days[Math.max(0, Math.min(59, day - (state.program.curriculumStartDay || 1)))]; }
+  function dayLesson(day) {
+    const relativeIndex = Math.max(0, Math.min(59, day - (state.program.curriculumStartDay || 1)));
+    const baseLesson = curriculum.days[relativeIndex];
+    // 课程迁移会保留原来的起始天数；语文新阶段按页面显示的实际第34天开始，
+    // 避免已迁移用户在第38天仍看到旧的 j q x 阶段。数学和英语继续沿用原进度索引。
+    if (day < 34) return baseLesson;
+    const chineseIndex = Math.min(59, 33 + (day - 34));
+    return { ...baseLesson, chinese: curriculum.days[chineseIndex].chinese };
+  }
   function dailyDone(day, subject) { return state.daily.completed.includes(dailyKey(day, subject)); }
   function completedToday(day) { return subjectKeys.filter((key) => dailyDone(day, key)).length; }
   function allRewards() { return [...defaultRewards, ...state.rewards.custom.map((reward) => ({ ...reward, custom: true }))]; }
@@ -535,7 +543,7 @@
           <p>${current.lesson.goal}</p>
           ${current.lesson.note ? `<small>${current.lesson.note}</small>` : ""}
         </section>
-        <div class="instruction">${current.subject === "chinese" ? "完成10题：7道拼音 + 3道词语与阅读理解。先自己拼一拼，再选答案。" : current.subject === "math" ? "完成5题：20以内加减法、数的分合与基础概念。可以用小棒帮忙。" : "完成5题：听一听、认一认熟悉的单词。答题后可以自愿录音跟读。"}</div>
+        <div class="instruction">${current.subject === "chinese" ? `完成10题：${current.lesson.goal}。先自己拼一拼，再选答案。` : current.subject === "math" ? "完成5题：20以内加减法、数的分合与基础概念。可以用小棒帮忙。" : "完成5题：听一听、认一认熟悉的单词。答题后可以自愿录音跟读。"}</div>
         <section id="level-content"></section>
       </section>`;
     $(".back-button").addEventListener("click", renderHome);

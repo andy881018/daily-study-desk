@@ -151,6 +151,18 @@ test("浏览器：奖励新增编辑与更新保留、10题流程、金币上限
       }
     });
     await page.goto(origin);
+    const migrationContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+    const migrationPage = await migrationContext.newPage();
+    await migrationPage.addInitScript(() => {
+      localStorage.setItem("daily-study-desk-v1", JSON.stringify({
+        program: { version: "2026.10-60day-v3-personalized", completedDays: 37, records: {}, history: [], curriculumStartDay: 10 }
+      }));
+    });
+    await migrationPage.goto(origin);
+    await migrationPage.locator(".subject-card").first().click();
+    assert.match(await migrationPage.locator(".day-overview h2").innerText(), /zh ch sh r/);
+    assert.match(await migrationPage.locator(".instruction").innerText(), /阶段重点/);
+    await migrationContext.close();
     const expected = await page.evaluate(() => window.originalSeed);
     const savedState = () => page.evaluate(() => JSON.parse(localStorage.getItem("daily-study-desk-v1")));
     let saved = await savedState();
